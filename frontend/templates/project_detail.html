@@ -7,11 +7,11 @@
 <div class="d-flex justify-content-end gap-2 mb-3">
     <div class="btn-group">
         <button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown">
-            📄 Скачать смету
+            Скачать смету
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=full" target="_blank">📊 Полная (с ценами)</a></li>
-            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=short" target="_blank">📋 Краткая (только итоги)</a></li>
+            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=full" target="_blank">Полная (с ценами)</a></li>
+            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=short" target="_blank">Краткая (только итоги)</a></li>
         </ul>
     </div>
 </div>
@@ -19,20 +19,20 @@
 <form id="mainForm" method="POST" action="/project/{{ project.id }}/save_all">
     <input type="hidden" name="active_tab" id="active_tab" value="main">
     <ul class="nav nav-tabs mb-3" id="projectTabs" role="tablist">
-        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#main" onclick="setActiveTab('main')">📋 Основное</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#estimate" onclick="setActiveTab('estimate')">📊 Смета</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#files" onclick="setActiveTab('files')">📎 Файлы</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#photos" onclick="setActiveTab('photos')">📸 Фото</button></li>
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#main" onclick="setActiveTab('main')">Основное</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#estimate" onclick="setActiveTab('estimate')">Смета</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#files" onclick="setActiveTab('files')">Файлы</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#photos" onclick="setActiveTab('photos')">Фото</button></li>
     </ul>
     <div class="tab-content">
         <div class="tab-pane fade show active" id="main">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white"><h4 class="mb-0">📋 Редактирование проекта</h4></div>
+                <div class="card-header bg-primary text-white"><h4 class="mb-0">Редактирование проекта</h4></div>
                 <div class="card-body">
-                    <div class="mb-3"><label class="form-label">Название объекта:</label><input type="text" name="name" value="{{ project.name }}" class="form-control" required></div>
+                    <div class="mb-3"><label>Название объекта:</label><input type="text" name="name" value="{{ project.name }}" class="form-control" required></div>
                     <div class="row mb-3">
-                        <div class="col-md-8"><label class="form-label">📍 Адрес:</label><input type="text" name="address" value="{{ project.address or '' }}" class="form-control"></div>
-                        <div class="col-md-4"><label class="form-label">📌 Статус:</label><select name="status" class="form-select">
+                        <div class="col-md-8"><label>Адрес:</label><input type="text" name="address" value="{{ project.address or '' }}" class="form-control"></div>
+                        <div class="col-md-4"><label>Статус:</label><select name="status" class="form-select">
                             <option value="На этапе согласования" {% if project.status == 'На этапе согласования' %}selected{% endif %}>На этапе согласования</option>
                             <option value="В работе" {% if project.status == 'В работе' %}selected{% endif %}>В работе</option>
                             <option value="Завершённые" {% if project.status == 'Завершённые' %}selected{% endif %}>Завершённые</option>
@@ -40,16 +40,16 @@
                         </select></div>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-md-6"><label class="form-label">👤 ФИО заказчика:</label><input type="text" name="client_name" value="{{ project.client_name or '' }}" class="form-control"></div>
-                        <div class="col-md-6"><label class="form-label">📞 Телефон заказчика:</label><input type="text" name="client_phone" value="{{ project.client_phone or '' }}" class="form-control"></div>
+                        <div class="col-md-6"><label>ФИО заказчика:</label><input type="text" name="client_name" value="{{ project.client_name or '' }}" class="form-control"></div>
+                        <div class="col-md-6"><label>Телефон заказчика:</label><input type="text" name="client_phone" value="{{ project.client_phone or '' }}" class="form-control"></div>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-md-4"><label class="form-label">📅 Дата начала:</label><input type="text" name="start_date" id="start_date" value="{{ timeline.start_date | ru_date if timeline.start_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
-                        <div class="col-md-4"><label class="form-label">⏳ Плановая дата окончания:</label><input type="text" name="end_date" id="end_date" value="{{ timeline.end_date | ru_date if timeline.end_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
-                        <div class="col-md-4"><label class="form-label">✅ Фактическая дата окончания:</label><input type="text" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date | ru_date if project.actual_end_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
+                        <div class="col-md-4"><label>Дата начала:</label><input type="text" name="start_date" id="start_date" value="{{ timeline.start_date | ru_date if timeline.start_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
+                        <div class="col-md-4"><label>Плановая дата окончания:</label><input type="text" name="end_date" id="end_date" value="{{ timeline.end_date | ru_date if timeline.end_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
+                        <div class="col-md-4"><label>Фактическая дата окончания:</label><input type="text" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date | ru_date if project.actual_end_date else '' }}" class="form-control" placeholder="ДД.ММ.ГГГГ"></div>
                     </div>
                     <div class="text-center mt-4">
-                        <label class="form-label fw-bold">📈 Прогресс выполнения</label>
+                        <label class="fw-bold">Прогресс выполнения</label>
                         <div class="progress-circle mx-auto" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};"><span class="progress-text">{{ progress }}%</span></div>
                         {% if not timeline or not timeline.start_date or not timeline.end_date %}<small class="text-muted d-block mt-2">(Для расчёта прогресса укажите даты начала и окончания)</small>{% endif %}
                     </div>
@@ -58,41 +58,44 @@
         </div>
         <div class="tab-pane fade" id="estimate">
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white"><h5 class="mb-0">⚡ Быстрое добавление услуги</h5></div>
+                <div class="card-header bg-success text-white"><h5 class="mb-0">Быстрое добавление услуги</h5></div>
                 <div class="card-body">
                     <div class="row g-2">
                         <div class="col-md-5"><select id="new_service_id" class="form-select"><option value="">Выберите услугу</option>{% for service in services %}<option value="{{ service.id }}" data-price="{{ service.price }}" data-unit="{{ service.unit }}">{{ service.name }} ({{ service.unit }} — {{ service.price | format_number }} руб)</option>{% endfor %}</select></div>
                         <div class="col-md-4"><input type="number" step="0.01" id="new_quantity" class="form-control" placeholder="Количество" value="1"></div>
-                        <div class="col-md-3"><button type="button" id="addWorkBtn" class="btn btn-success w-100">➕ Добавить</button></div>
+                        <div class="col-md-3"><button type="button" id="addWorkBtn" class="btn btn-success w-100">+ Добавить</button></div>
                     </div>
                 </div>
             </div>
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white"><h5 class="mb-0">📦 Добавить из шаблона <button type="button" class="btn btn-sm btn-light float-end" onclick="toggleTemplates()">Показать</button></h5></div>
-                <div id="templatesBlock" style="display: none;"><div class="card-body"><div class="row g-2"><div class="col-md-5"><select id="categorySelect" class="form-select"><option value="">Выберите категорию</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></div><div class="col-md-5"><select id="productSelect" class="form-select" disabled><option value="">Сначала выберите категорию</option></select></div><div class="col-md-2"><button type="button" id="addFromTemplateBtn" class="btn btn-info w-100" disabled>➕ Добавить</button></div></div></div></div>
+                <div class="card-header bg-info text-white"><h5 class="mb-0">Добавить из шаблона <button type="button" class="btn btn-sm btn-light float-end" onclick="toggleTemplates()">Показать</button></h5></div>
+                <div id="templatesBlock" style="display: none;"><div class="card-body"><div class="row g-2"><div class="col-md-5"><select id="categorySelect" class="form-select"><option value="">Выберите категорию</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></div><div class="col-md-5"><select id="productSelect" class="form-select" disabled><option value="">Сначала выберите категорию</option></select></div><div class="col-md-2"><button type="button" id="addFromTemplateBtn" class="btn btn-info w-100" disabled>+ Добавить</button></div></div></div></div>
             </div>
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white"><h5 class="mb-0">💰 Смета работ (доход)</h5></div>
+                <div class="card-header bg-secondary text-white"><h5 class="mb-0">Смета работ (доход)</h5></div>
                 <div class="card-body">
-                    <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Работа</th><th>Количество</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody id="works-table-body">{% for work in works %}<tr id="work-row-{{ work.id }}"><td class="editable-name" contenteditable="true" data-work-id="{{ work.id }}" data-field="name">{{ work.custom_name if work.custom_name else work.service.name }}</td><td><input type="number" step="0.01" class="form-control form-control-sm work-qty" data-work-id="{{ work.id }}" value="{{ work.quantity }}"> {{ work.service.unit }}</td><td class="editable-price" contenteditable="true" data-work-id="{{ work.id }}" data-field="price">{{ (work.custom_price if work.custom_price else work.service.price) | format_number }}</td><td class="work-total">{{ work.total_price | format_number }} руб</td><td><button class="btn btn-sm btn-outline-danger delete-work-btn" data-work-id="{{ work.id }}">✖️</button></td></tr>{% endfor %}</tbody></table></div>
-                    <div class="alert alert-success"><strong>💰 Доход по смете: <span id="total_income">{{ total | format_number }} руб</span></strong></div>
+                    <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Работа</th><th>Количество</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody id="works-table-body">{% for work in works %}<tr id="work-row-{{ work.id }}"><td class="editable-name" contenteditable="true" data-work-id="{{ work.id }}" data-field="name">{{ work.custom_name if work.custom_name else work.service.name }}</td><td><input type="number" step="0.01" class="form-control form-control-sm work-qty d-inline-block w-auto" data-work-id="{{ work.id }}" value="{{ work.quantity }}" style="width: 90px;"> <span class="ms-1">{{ work.service.unit }}</span></td><td class="editable-price" contenteditable="true" data-work-id="{{ work.id }}" data-field="price">{{ (work.custom_price if work.custom_price else work.service.price) | format_number }}</td><td class="work-total">{{ work.total_price | format_number }} руб</td><td><button class="btn btn-sm btn-outline-danger delete-work-btn" data-work-id="{{ work.id }}">✖️</button></td></tr>{% endfor %}</tbody></td></div>
+                    <div class="alert alert-success"><strong>Доход по смете: <span id="total_income">{{ total | format_number }} руб</span></strong></div>
                 </div>
             </div>
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-danger text-white"><h5 class="mb-0">📉 Расходы по проекту</h5></div>
-                <div class="card-body"><table class="table" id="expenses-table"><tbody>{% for expense in expenses %}<tr id="expense-row-{{ expense.id }}"><td><input type="text" class="form-control form-control-sm expense-name" data-expense-id="{{ expense.id }}" value="{{ expense.name }}"></td><td><input type="number" step="0.01" class="form-control form-control-sm expense-amount" data-expense-id="{{ expense.id }}" value="{{ expense.amount }}"></td><td><button class="btn btn-sm btn-outline-danger delete-expense-btn" data-expense-id="{{ expense.id }}">✖️</button></td></tr>{% endfor %}</tbody></table><hr><div class="row g-2 mt-2"><div class="col-md-5"><input type="text" id="new_expense_name" class="form-control" placeholder="Новый расход"></div><div class="col-md-4"><input type="number" step="0.01" id="new_expense_amount" class="form-control" placeholder="Сумма"></div><div class="col-md-3"><button type="button" id="addExpenseBtn" class="btn btn-danger w-100">➕ Добавить расход</button></div></div><div class="alert alert-danger mt-3"><strong>📉 Всего расходов: <span id="total_expenses">{{ total_expenses | format_number }} руб</span></strong></div></div>
+                <div class="card-header bg-danger text-white"><h5 class="mb-0">Расходы по проекту</h5></div>
+                <div class="card-body"><table class="table" id="expenses-table"><tbody>{% for expense in expenses %}<tr id="expense-row-{{ expense.id }}"><td><input type="text" class="form-control form-control-sm expense-name" data-expense-id="{{ expense.id }}" value="{{ expense.name }}"></td><td><input type="number" step="0.01" class="form-control form-control-sm expense-amount" data-expense-id="{{ expense.id }}" value="{{ expense.amount }}"></td><td><button class="btn btn-sm btn-outline-danger delete-expense-btn" data-expense-id="{{ expense.id }}">✖️</button></td></tr>{% endfor %}</tbody></table><hr><div class="row g-2 mt-2"><div class="col-md-5"><input type="text" id="new_expense_name" class="form-control" placeholder="Новый расход"></div><div class="col-md-4"><input type="number" step="0.01" id="new_expense_amount" class="form-control" placeholder="Сумма"></div><div class="col-md-3"><button type="button" id="addExpenseBtn" class="btn btn-danger w-100">+ Добавить расход</button></div></div><div class="alert alert-danger mt-3"><strong>Всего расходов: <span id="total_expenses">{{ total_expenses | format_number }} руб</span></strong></div></div>
             </div>
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white"><h5 class="mb-0">🛒 Список покупок</h5></div>
-                <div class="card-body"><div id="purchases-list">{% for purchase in purchases %}<div class="form-check mb-2" id="purchase-{{ purchase.id }}"><input class="form-check-input purchase-checkbox" type="checkbox" data-purchase-id="{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}><label class="form-check-label">🔘 {{ purchase.name }} (x{{ purchase.quantity }})</label><button class="btn btn-sm btn-outline-danger float-end delete-purchase-btn" data-purchase-id="{{ purchase.id }}">✖️</button></div>{% endfor %}</div><hr><div class="row g-2 mt-2"><div class="col-md-6"><input type="text" id="new_purchase_name" class="form-control" placeholder="Что нужно купить?"></div><div class="col-md-3"><input type="number" id="new_purchase_quantity" class="form-control" placeholder="Кол-во" value="1"></div><div class="col-md-3"><button type="button" id="addPurchaseBtn" class="btn btn-info w-100">➕ Добавить</button></div></div></div>
+                <div class="card-header bg-info text-white"><h5 class="mb-0">Список покупок</h5></div>
+                <div class="card-body"><div id="purchases-list">{% for purchase in purchases %}<div class="row mb-2 align-items-center" id="purchase-{{ purchase.id }}"><div class="col-1"><input type="checkbox" class="purchase-checkbox" data-purchase-id="{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}></div><div class="col-5"><span class="purchase-name">{{ purchase.name }}</span></div><div class="col-3"><input type="number" class="form-control form-control-sm purchase-quantity" data-purchase-id="{{ purchase.id }}" value="{{ purchase.quantity }}" style="width: 70px;"></div><div class="col-3"><button class="btn btn-sm btn-outline-danger delete-purchase-btn" data-purchase-id="{{ purchase.id }}">✖️</button></div></div>{% endfor %}</div><hr><div class="row g-2 mt-2"><div class="col-md-6"><input type="text" id="new_purchase_name" class="form-control" placeholder="Что нужно купить?"></div><div class="col-md-3"><input type="number" id="new_purchase_quantity" class="form-control" placeholder="Кол-во" value="1"></div><div class="col-md-3"><button type="button" id="addPurchaseBtn" class="btn btn-info w-100">+ Добавить</button></div></div></div>
             </div>
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-dark text-white"><h5 class="mb-0">💸 Итоговая прибыль</h5></div>
-                <div class="card-body text-center"><h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}" id="profit">💵 {{ profit | format_number }} руб</h2><p class="text-muted">Доход (💰 {{ total | format_number }} руб) — Расходы (📉 {{ total_expenses | format_number }} руб)</p></div>
+                <div class="card-header bg-dark text-white"><h5 class="mb-0">Итоговая прибыль</h5></div>
+                <div class="card-body text-center">
+                    <h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}" id="profit">💵 {{ profit | format_number }} руб</h2>
+                    <p class="text-muted">Доход (💰 <span id="total_income_display">{{ total | format_number }}</span> руб) — Расходы (📉 <span id="total_expenses_display">{{ total_expenses | format_number }}</span> руб)</p>
+                </div>
             </div>
         </div>
-        <div class="tab-pane fade" id="files"><div class="card shadow-sm"><div class="card-header bg-secondary text-white"><h5 class="mb-0">📎 Файлы проекта</h5></div><div class="card-body text-center text-muted"><p class="mt-3">📙 Здесь можно будет загружать договоры, сметы, документы.</p><p>Функция в разработке 🚧</p></div></div></div>
-        <div class="tab-pane fade" id="photos"><div class="card shadow-sm"><div class="card-header bg-secondary text-white"><h5 class="mb-0">📸 Готовый объект</h5></div><div class="card-body text-center text-muted"><p class="mt-3">🖼️ Здесь можно будет добавить фото готового объекта.</p><p>Функция в разработке 🚧</p></div></div></div>
+        <div class="tab-pane fade" id="files"><div class="card shadow-sm"><div class="card-header bg-secondary text-white"><h5 class="mb-0">Файлы проекта</h5></div><div class="card-body text-center text-muted"><p>Здесь можно будет загружать договоры, сметы, документы.</p><p>Функция в разработке</p></div></div></div>
+        <div class="tab-pane fade" id="photos"><div class="card shadow-sm"><div class="card-header bg-secondary text-white"><h5 class="mb-0">Готовый объект</h5></div><div class="card-body text-center text-muted"><p>Здесь можно будет добавить фото готового объекта.</p><p>Функция в разработке</p></div></div></div>
     </div>
 </form>
 
@@ -110,18 +113,8 @@
 
 <script>
 function setActiveTab(tabId) { document.getElementById('active_tab').value = tabId; }
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tab = urlParams.get('tab');
-    if (tab && tab !== 'main') {
-        const tabButton = document.querySelector(`button[data-bs-target="#${tab}"]`);
-        if (tabButton) { const bsTab = new bootstrap.Tab(tabButton); bsTab.show(); }
-    }
-});
-function toggleTemplates() {
-    const block = document.getElementById('templatesBlock');
-    block.style.display = block.style.display === 'none' ? 'block' : 'none';
-}
+function toggleTemplates() { const block = document.getElementById('templatesBlock'); if(block) block.style.display = block.style.display === 'none' ? 'block' : 'none'; }
+
 function normalizeDate(dateStr) {
     if (!dateStr) return '';
     let str = dateStr.trim();
@@ -134,20 +127,34 @@ function normalizeDate(dateStr) {
     }
     return str;
 }
+
+function formatNumber(value) {
+    if (value === null || value === undefined) return '0';
+    let num = parseFloat(value);
+    if (isNaN(num)) return '0';
+    if (Number.isInteger(num)) return num.toLocaleString('ru-RU');
+    return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\.00$/, '');
+}
+
 function updateTotals() {
-    fetch(`/project/{{ project.id }}/get_totals`).then(res=>res.json()).then(totals=>{
-        document.getElementById('total_income').innerText = totals.total_income.toLocaleString('ru-RU').replace(/,/g,' ') + ' руб';
-        document.getElementById('total_expenses').innerText = totals.total_expenses.toLocaleString('ru-RU').replace(/,/g,' ') + ' руб';
-        const profitElem = document.getElementById('profit');
-        profitElem.innerText = '💵 ' + totals.profit.toLocaleString('ru-RU').replace(/,/g,' ') + ' руб';
-        if (totals.profit > 0) profitElem.className = 'text-success';
-        else if (totals.profit < 0) profitElem.className = 'text-danger';
-        else profitElem.className = 'text-secondary';
+    fetch(`/project/{{ project.id }}/get_totals`).then(r=>r.json()).then(totals=>{
+        if(document.getElementById('total_income')) document.getElementById('total_income').innerText = formatNumber(totals.total_income) + ' руб';
+        if(document.getElementById('total_expenses')) document.getElementById('total_expenses').innerText = formatNumber(totals.total_expenses) + ' руб';
+        if(document.getElementById('total_income_display')) document.getElementById('total_income_display').innerText = formatNumber(totals.total_income);
+        if(document.getElementById('total_expenses_display')) document.getElementById('total_expenses_display').innerText = formatNumber(totals.total_expenses);
+        let profitElem = document.getElementById('profit');
+        if(profitElem) {
+            profitElem.innerText = '💵 ' + formatNumber(totals.profit) + ' руб';
+            if (totals.profit > 0) profitElem.className = 'text-success';
+            else if (totals.profit < 0) profitElem.className = 'text-danger';
+            else profitElem.className = 'text-secondary';
+        }
     });
 }
-document.getElementById('addWorkBtn').addEventListener('click', function() {
-    const serviceId = document.getElementById('new_service_id').value;
-    const quantity = document.getElementById('new_quantity').value;
+
+document.getElementById('addWorkBtn')?.addEventListener('click', function() {
+    let serviceId = document.getElementById('new_service_id').value;
+    let quantity = document.getElementById('new_quantity').value;
     if (!serviceId) { alert('Выберите услугу'); return; }
     if (!quantity || quantity <= 0) { alert('Введите корректное количество'); return; }
     fetch(`/project/{{ project.id }}/add_work_ajax`, {
@@ -155,30 +162,31 @@ document.getElementById('addWorkBtn').addEventListener('click', function() {
         body: JSON.stringify({ service_id: parseInt(serviceId), quantity: parseFloat(quantity) })
     }).then(r=>r.json()).then(data=>{
         if (data.success) {
-            const tbody = document.getElementById('works-table-body');
-            const newRow = tbody.insertRow();
+            let tbody = document.getElementById('works-table-body');
+            let newRow = tbody.insertRow();
             newRow.id = `work-row-${data.work_id}`;
             newRow.innerHTML = `<td class="editable-name" contenteditable="true" data-work-id="${data.work_id}" data-field="name">${data.service_name}</td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm work-qty" data-work-id="${data.work_id}" value="${data.quantity}"> ${data.unit}</td>
-                <td class="editable-price" contenteditable="true" data-work-id="${data.work_id}" data-field="price">${data.price.toLocaleString('ru-RU').replace(/,/g,' ')}</td>
-                <td class="work-total">${data.total_price.toLocaleString('ru-RU').replace(/,/g,' ')} руб</td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm work-qty d-inline-block w-auto" data-work-id="${data.work_id}" value="${data.quantity}" style="width: 90px;"> <span class="ms-1">${data.unit}</span></td>
+                <td class="editable-price" contenteditable="true" data-work-id="${data.work_id}" data-field="price">${formatNumber(data.price)}</td>
+                <td class="work-total">${formatNumber(data.total_price)} руб</td>
                 <td><button class="btn btn-sm btn-outline-danger delete-work-btn" data-work-id="${data.work_id}">✖️</button></td>`;
             document.getElementById('new_quantity').value = '1';
             updateTotals();
         } else { alert('Ошибка: ' + data.message); }
     });
 });
-document.getElementById('addExpenseBtn').addEventListener('click', function() {
-    const name = document.getElementById('new_expense_name').value;
-    const amount = document.getElementById('new_expense_amount').value;
+
+document.getElementById('addExpenseBtn')?.addEventListener('click', function() {
+    let name = document.getElementById('new_expense_name').value;
+    let amount = document.getElementById('new_expense_amount').value;
     if (!name || !amount) { alert('Заполните название и сумму расхода'); return; }
     fetch(`/project/{{ project.id }}/add_expense_ajax`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name, amount: parseFloat(amount) })
     }).then(r=>r.json()).then(data=>{
         if (data.success) {
-            const table = document.getElementById('expenses-table').querySelector('tbody');
-            const newRow = table.insertRow();
+            let table = document.getElementById('expenses-table').querySelector('tbody');
+            let newRow = table.insertRow();
             newRow.id = `expense-row-${data.expense_id}`;
             newRow.innerHTML = `<td><input type="text" class="form-control form-control-sm expense-name" data-expense-id="${data.expense_id}" value="${data.name}"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm expense-amount" data-expense-id="${data.expense_id}" value="${data.amount}"></td>
@@ -189,66 +197,79 @@ document.getElementById('addExpenseBtn').addEventListener('click', function() {
         } else { alert('Ошибка: ' + data.message); }
     });
 });
-document.getElementById('addPurchaseBtn').addEventListener('click', function() {
-    const name = document.getElementById('new_purchase_name').value;
-    const quantity = document.getElementById('new_purchase_quantity').value;
+
+document.getElementById('addPurchaseBtn')?.addEventListener('click', function() {
+    let name = document.getElementById('new_purchase_name').value;
+    let quantity = document.getElementById('new_purchase_quantity').value;
     if (!name) { alert('Введите название покупки'); return; }
     fetch(`/project/{{ project.id }}/add_purchase_ajax`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name, quantity: parseInt(quantity) || 1 })
     }).then(r=>r.json()).then(data=>{
         if (data.success) {
-            const container = document.getElementById('purchases-list');
-            const newDiv = document.createElement('div');
-            newDiv.className = 'form-check mb-2';
+            let container = document.getElementById('purchases-list');
+            let newDiv = document.createElement('div');
+            newDiv.className = 'row mb-2 align-items-center';
             newDiv.id = `purchase-${data.purchase_id}`;
-            newDiv.innerHTML = `<input class="form-check-input purchase-checkbox" type="checkbox" data-purchase-id="${data.purchase_id}">
-                <label class="form-check-label">🔘 ${data.name} (x${data.quantity})</label>
-                <button class="btn btn-sm btn-outline-danger float-end delete-purchase-btn" data-purchase-id="${data.purchase_id}">✖️</button>`;
+            newDiv.innerHTML = `<div class="col-1"><input type="checkbox" class="purchase-checkbox" data-purchase-id="${data.purchase_id}"></div>
+                <div class="col-5"><span class="purchase-name">${data.name}</span></div>
+                <div class="col-3"><input type="number" class="form-control form-control-sm purchase-quantity" data-purchase-id="${data.purchase_id}" value="${data.quantity}" style="width: 70px;"></div>
+                <div class="col-3"><button class="btn btn-sm btn-outline-danger delete-purchase-btn" data-purchase-id="${data.purchase_id}">✖️</button></div>`;
             container.appendChild(newDiv);
             document.getElementById('new_purchase_name').value = '';
             document.getElementById('new_purchase_quantity').value = '1';
         } else { alert('Ошибка: ' + data.message); }
     });
 });
+
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('delete-work-btn')) {
-        const workId = e.target.dataset.workId;
+        let workId = e.target.dataset.workId;
         fetch(`/project/{{ project.id }}/delete_work_ajax/${workId}`, { method: 'DELETE' })
             .then(r=>r.json()).then(data=>{ if (data.success) { document.getElementById(`work-row-${workId}`).remove(); updateTotals(); } });
     }
     if (e.target.classList.contains('delete-expense-btn')) {
-        const expenseId = e.target.dataset.expenseId;
+        let expenseId = e.target.dataset.expenseId;
         fetch(`/project/{{ project.id }}/delete_expense_ajax/${expenseId}`, { method: 'DELETE' })
             .then(r=>r.json()).then(data=>{ if (data.success) { document.getElementById(`expense-row-${expenseId}`).remove(); updateTotals(); } });
     }
     if (e.target.classList.contains('delete-purchase-btn')) {
-        const purchaseId = e.target.dataset.purchaseId;
+        let purchaseId = e.target.dataset.purchaseId;
         fetch(`/project/{{ project.id }}/delete_purchase_ajax/${purchaseId}`, { method: 'DELETE' })
             .then(r=>r.json()).then(data=>{ if (data.success) { document.getElementById(`purchase-${purchaseId}`).remove(); } });
     }
 });
+
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('work-qty')) {
-        const workId = e.target.dataset.workId;
-        const newQty = e.target.value;
+        let workId = e.target.dataset.workId;
+        let newQty = e.target.value;
         fetch(`/project/{{ project.id }}/autosave`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `work_qty_${workId}`, value: parseFloat(newQty) })
         }).then(() => updateTotals());
     }
     if (e.target.classList.contains('purchase-checkbox')) {
-        const purchaseId = e.target.dataset.purchaseId;
-        const checked = e.target.checked;
+        let purchaseId = e.target.dataset.purchaseId;
+        let checked = e.target.checked;
         fetch(`/project/{{ project.id }}/autosave`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `purchased_${purchaseId}`, value: checked })
         });
     }
+    if (e.target.classList.contains('purchase-quantity')) {
+        let purchaseId = e.target.dataset.purchaseId;
+        let newQty = e.target.value;
+        fetch(`/project/{{ project.id }}/autosave`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: `purchase_quantity_${purchaseId}`, value: parseInt(newQty) })
+        });
+    }
 });
+
 document.addEventListener('blur', function(e) {
     if (e.target.classList.contains('editable-price')) {
-        const workId = e.target.dataset.workId;
+        let workId = e.target.dataset.workId;
         let newPrice = parseFloat(e.target.innerText.replace(/[^0-9.-]/g, ''));
         if (!isNaN(newPrice)) {
             fetch(`/project/{{ project.id }}/autosave`, {
@@ -258,24 +279,24 @@ document.addEventListener('blur', function(e) {
         }
     }
     if (e.target.classList.contains('editable-name')) {
-        const workId = e.target.dataset.workId;
-        const newName = e.target.innerText.trim();
+        let workId = e.target.dataset.workId;
+        let newName = e.target.innerText.trim();
         fetch(`/project/{{ project.id }}/autosave`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `work_name_${workId}`, value: newName })
         });
     }
     if (e.target.classList.contains('expense-name')) {
-        const expenseId = e.target.dataset.expenseId;
-        const newName = e.target.value;
+        let expenseId = e.target.dataset.expenseId;
+        let newName = e.target.value;
         fetch(`/project/{{ project.id }}/autosave`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `expense_name_${expenseId}`, value: newName })
         });
     }
     if (e.target.classList.contains('expense-amount')) {
-        const expenseId = e.target.dataset.expenseId;
-        const newAmount = parseFloat(e.target.value);
+        let expenseId = e.target.dataset.expenseId;
+        let newAmount = parseFloat(e.target.value);
         if (!isNaN(newAmount)) {
             fetch(`/project/{{ project.id }}/autosave`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -284,6 +305,7 @@ document.addEventListener('blur', function(e) {
         }
     }
 });
+
 document.getElementById('start_date')?.addEventListener('blur', function() {
     let normalized = normalizeDate(this.value);
     if (normalized !== this.value) this.value = normalized;
@@ -299,40 +321,42 @@ document.getElementById('actual_end_date')?.addEventListener('blur', function() 
     if (normalized !== this.value) this.value = normalized;
     if (normalized) fetch(`/project/{{ project.id }}/autosave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: 'actual_end_date', value: normalized }) });
 });
+
 const categorySelect = document.getElementById('categorySelect');
 const productSelect = document.getElementById('productSelect');
 const addFromTemplateBtn = document.getElementById('addFromTemplateBtn');
 if (categorySelect) {
     categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
+        let categoryId = this.value;
         if (categoryId) {
             fetch(`/products/by-category/${categoryId}`).then(r=>r.json()).then(products => {
                 productSelect.innerHTML = '<option value="">Выберите продукт</option>';
-                products.forEach(product => { productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price.toLocaleString('ru-RU').replace(/,/g,' ')} руб)</option>`; });
+                products.forEach(product => { productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${formatNumber(product.price)} руб)</option>`; });
                 productSelect.disabled = false;
             });
         } else { productSelect.innerHTML = '<option value="">Сначала выберите категорию</option>'; productSelect.disabled = true; addFromTemplateBtn.disabled = true; }
     });
     productSelect.addEventListener('change', function() { addFromTemplateBtn.disabled = !this.value; });
     addFromTemplateBtn.addEventListener('click', function() {
-        const productId = productSelect.value;
-        const productUnit = productSelect.options[productSelect.selectedIndex]?.getAttribute('data-unit');
+        let productId = productSelect.value;
+        let productUnit = productSelect.options[productSelect.selectedIndex]?.getAttribute('data-unit');
         if (productId) {
-            const quantity = prompt(`Введите количество (${productUnit}):`, "1");
+            let quantity = prompt(`Введите количество (${productUnit}):`, "1");
             if (quantity && !isNaN(quantity) && parseFloat(quantity) > 0) {
-                const form = document.createElement('form');
+                let form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/project/{{ project.id }}/add_product_work`;
-                const productIdInput = document.createElement('input'); productIdInput.type = 'hidden'; productIdInput.name = 'product_id'; productIdInput.value = productId; form.appendChild(productIdInput);
-                const quantityInput = document.createElement('input'); quantityInput.type = 'hidden'; quantityInput.name = 'quantity'; quantityInput.value = quantity; form.appendChild(quantityInput);
+                let inp1 = document.createElement('input'); inp1.type = 'hidden'; inp1.name = 'product_id'; inp1.value = productId; form.appendChild(inp1);
+                let inp2 = document.createElement('input'); inp2.type = 'hidden'; inp2.name = 'quantity'; inp2.value = quantity; form.appendChild(inp2);
                 document.body.appendChild(form);
                 form.submit();
             } else { alert('Пожалуйста, введите корректное количество'); }
         }
     });
 }
+
 document.querySelectorAll('.progress-circle').forEach(el => {
-    const progress = parseInt(el.style.getPropertyValue('--progress'));
+    let progress = parseInt(el.style.getPropertyValue('--progress'));
     let color = '#198754';
     if (progress < 30) color = '#dc3545';
     else if (progress < 50) color = '#fd7e14';

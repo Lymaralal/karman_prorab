@@ -19,7 +19,7 @@ PROJECT_STATUSES = ['На этапе согласования', 'В работе
 def inject_globals():
     return {'project_statuses': PROJECT_STATUSES}
 
-# фильтр для форматирования чисел
+# фильтры для шаблонов
 @app.template_filter('format_number')
 def format_number(value):
     if value is None:
@@ -33,7 +33,6 @@ def format_number(value):
         return formatted
     return str(value)
 
-# фильтр для даты
 @app.template_filter('ru_date')
 def ru_date(date_str):
     if not date_str:
@@ -42,6 +41,47 @@ def ru_date(date_str):
     if len(parts) == 3:
         return f"{parts[2]}.{parts[1]}.{parts[0]}"
     return date_str
+
+# вспомогательные функции
+def parse_date(value):
+    if not value:
+        return None
+    # формат YYYY-MM-DD
+    if isinstance(value, str) and '-' in value and len(value.split('-')[0]) == 4:
+        try:
+            return datetime.strptime(value, '%Y-%m-%d')
+        except:
+            pass
+    # формат DD.MM.YYYY
+    try:
+        return datetime.strptime(value, '%d.%m.%Y')
+    except:
+        pass
+    return None
+
+def calculate_progress(project):
+    timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+    if not timeline or not timeline.start_date or not timeline.end_date:
+        return 0
+    start = parse_date(timeline.start_date)
+    end = parse_date(timeline.end_date)
+    if not start or not end:
+        return 0
+    today = datetime.now()
+    if today >= end:
+        return 100
+    if today <= start:
+        return 0
+    total_days = (end - start).days
+    days_passed = (today - start).days
+    return min(100, int((days_passed / total_days) * 100)) if total_days > 0 else 0
+
+def get_progress_color(progress):
+    if progress < 30: return '#dc3545'
+    if progress < 50: return '#fd7e14'
+    if progress < 70: return '#ffc107'
+    if progress < 90: return '#20c997'
+    return '#198754'
 
 # модели
 class Service(db.Model):
@@ -124,32 +164,6 @@ class Setting(db.Model):
             setting = Setting(key=key, value=value)
             db.session.add(setting)
         db.session.commit()
-
-# вспомогательные функции 
-def calculate_progress(project):
-    timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
-    if not timeline or not timeline.start_date or not timeline.end_date:
-        return 0
-    try:
-        start = datetime.strptime(timeline.start_date, '%Y-%m-%d')
-        end = datetime.strptime(timeline.end_date, '%Y-%m-%d')
-        today = datetime.now()
-        if today >= end:
-            return 100
-        if today <= start:
-            return 0
-        total_days = (end - start).days
-        days_passed = (today - start).days
-        return min(100, int((days_passed / total_days) * 100)) if total_days > 0 else 0
-    except:
-        return 0
-
-def get_progress_color(progress):
-    if progress < 30: return '#dc3545'
-    if progress < 50: return '#fd7e14'
-    if progress < 70: return '#ffc107'
-    if progress < 90: return '#20c997'
-    return '#198754'
 
 # маршруты
 @app.route('/')
@@ -314,11 +328,9 @@ def project_detail(project_id):
     progress = calculate_progress(project)
     works = ProjectWork.query.filter_by(project_id=project_id).all()
     expenses = Expense.query.filter_by(project_id=project_id).all()
-    
     total = sum(w.total_price for w in works)
     total_expenses = sum(e.amount for e in expenses)
     profit = total - total_expenses
-    
     return render_template('project_detail.html',
                          project=project,
                          services=Service.query.all(),
@@ -354,7 +366,8 @@ def save_all(project_id):
         qty_key = f'work_qty_{work.id}'
         if qty_key in request.form:
             work.quantity = float(request.form[qty_key])
-            work.total_price = (work.custom_price if work.custom_price else work.service.price) * work.quantity
+            price = work.custom_price if work.custom_price else work.service.price
+            work.total_price = price * work.quantity
     for expense in project.expenses:
         name_key = f'expense_name_{expense.id}'
         amount_key = f'expense_amount_{expense.id}'
