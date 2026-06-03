@@ -553,7 +553,10 @@ def project_estimate_pdf(project_id):
     return send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf')
 
 
+# запуск
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        from flask_migrate import upgrade
+        upgrade()  # выполняет все ожидающие миграции
+        db.create_all()  # создаёт недостающие таблицы
     app.run(debug=True)
