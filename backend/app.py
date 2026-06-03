@@ -702,6 +702,23 @@ def delete_purchase_ajax(project_id, purchase_id):
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+    
+@app.route('/project/<int:project_id>/get_totals')
+def get_totals(project_id):
+    """Возвращает актуальные итоги по проекту (доход, расходы, прибыль)"""
+    project = Project.query.get_or_404(project_id)
+    works = ProjectWork.query.filter_by(project_id=project_id).all()
+    expenses = Expense.query.filter_by(project_id=project_id).all()
+    
+    total_income = sum(w.total_price for w in works)
+    total_expenses = sum(e.amount for e in expenses)
+    profit = total_income - total_expenses
+    
+    return jsonify({
+        'total_income': total_income,
+        'total_expenses': total_expenses,
+        'profit': profit
+    })
 
 
 # создание таблиц при запуске
