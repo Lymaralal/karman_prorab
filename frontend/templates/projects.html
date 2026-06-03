@@ -5,11 +5,13 @@
 {% block content %}
 
 <div class="card shadow-sm mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap">
-        <h4 class="mb-0">Строительные объекты</h4>
-        <div>
-            <input type="text" id="searchInput" class="form-control form-control-sm d-inline-block w-auto" placeholder="🔍 Поиск по адресу, заказчику, телефону...">
-            <a href="/projects/add" class="btn btn-light btn-sm ms-2">➕ Добавить объект</a>
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <h4 class="mb-0">Строительные объекты</h4>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="🔍 Поиск по адресу, заказчику, телефону..." style="min-width: 200px;">
+                <a href="/projects/add" class="btn btn-light btn-sm">➕ Добавить объект</a>
+            </div>
         </div>
     </div>
     <div class="card-body">
@@ -105,13 +107,13 @@
         </div>
         
         <!-- Раздел: Завершённые -->
-        <div class="status-section mb-4" data-status="Завершён">
+        <div class="status-section mb-4" data-status="Завершённые">
             <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
                 <h5 class="mb-0 text-success">✅ Завершённые</h5>
-                <span class="badge bg-success project-count">{{ projects | selectattr('status', 'equalto', 'Завершён') | list | length }}</span>
+                <span class="badge bg-success project-count">{{ projects | selectattr('status', 'equalto', 'Завершённые') | list | length }}</span>
             </div>
             <div class="section-content mt-2" style="display: none;">
-                {% set completed_projects = projects | selectattr('status', 'equalto', 'Завершён') | list %}
+                {% set completed_projects = projects | selectattr('status', 'equalto', 'Завершённые') | list %}
                 {% if completed_projects %}
                     <div class="list-group">
                         {% for project in completed_projects %}
@@ -123,7 +125,7 @@
                                     {% if project.client_name %}
                                     <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
                                     {% endif %}
-                                    <span class="badge bg-success">Завершён</span>
+                                    <span class="badge bg-success">Завершённые</span>
                                 </div>
                                 <div class="col-md-3 text-center">
                                     {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
@@ -150,13 +152,13 @@
         </div>
         
         <!-- Раздел: Отложенные -->
-        <div class="status-section mb-4" data-status="Отложен">
+        <div class="status-section mb-4" data-status="Отложенные">
             <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
                 <h5 class="mb-0 text-warning">⏸ Отложенные</h5>
-                <span class="badge bg-warning text-dark project-count">{{ projects | selectattr('status', 'equalto', 'Отложен') | list | length }}</span>
+                <span class="badge bg-warning text-dark project-count">{{ projects | selectattr('status', 'equalto', 'Отложенные') | list | length }}</span>
             </div>
             <div class="section-content mt-2" style="display: none;">
-                {% set delayed_projects = projects | selectattr('status', 'equalto', 'Отложен') | list %}
+                {% set delayed_projects = projects | selectattr('status', 'equalto', 'Отложенные') | list %}
                 {% if delayed_projects %}
                     <div class="list-group">
                         {% for project in delayed_projects %}
@@ -168,7 +170,7 @@
                                     {% if project.client_name %}
                                     <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
                                     {% endif %}
-                                    <span class="badge bg-warning text-dark">Отложен</span>
+                                    <span class="badge bg-warning text-dark">Отложенные</span>
                                 </div>
                                 <div class="col-md-3 text-center">
                                     {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
@@ -228,6 +230,19 @@
         padding: 5px 10px;
         margin: -5px -10px;
     }
+    @media (max-width: 768px) {
+        .progress-circle {
+            width: 40px;
+            height: 40px;
+        }
+        .progress-circle::before {
+            width: 32px;
+            height: 32px;
+        }
+        .progress-text {
+            font-size: 10px;
+        }
+    }
 </style>
 
 <script>
@@ -256,7 +271,6 @@
             const phone = item.getAttribute('data-phone')?.toLowerCase() || '';
             if (query === '' || name.includes(query) || address.includes(query) || client.includes(query) || phone.includes(query)) {
                 item.style.display = '';
-                // Показываем родительский раздел
                 let section = item.closest('.section-content');
                 if (section) section.style.display = 'block';
             } else {

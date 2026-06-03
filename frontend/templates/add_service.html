@@ -10,12 +10,12 @@
     <div class="card-body">
         <form method="POST">
             <div class="mb-3">
-                <label for="name" class="form-label">Название услуги</label>
-                <input type="text" class="form-control" id="name" name="name" placeholder="Например: Укладка плитки" required>
+                <label class="form-label">Название услуги</label>
+                <input type="text" name="name" class="form-control" placeholder="Например: Укладка плитки" required>
             </div>
             <div class="mb-3">
-                <label for="unit" class="form-label">Единица измерения</label>
-                <select class="form-select" id="unit" name="unit" required>
+                <label class="form-label">Единица измерения</label>
+                <select name="unit" class="form-select" required>
                     <option value="м²">м² (квадратный метр)</option>
                     <option value="м³">м³ (метр кубический)</option>
                     <option value="шт">шт (штука)</option>
@@ -24,8 +24,9 @@
                 </select>
             </div>
             <div class="mb-3">
-                <label for="price" class="form-label">Цена за единицу (руб)</label>
-                <input type="number" class="form-control" id="price" name="price" step="0.01" placeholder="2000" required>
+                <label class="form-label">Цена (руб)</label>
+                <input type="number" step="0.01" name="price" class="form-control" required>
+                <small class="text-muted">Для услуг «под ключ» указывайте полную стоимость (работа + материалы)</small>
             </div>
             <button type="submit" class="btn btn-success">💾 Сохранить</button>
             <a href="/services" class="btn btn-secondary">Отмена</a>

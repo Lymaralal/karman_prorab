@@ -33,6 +33,15 @@
             justify-content: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
+        @media (max-width: 768px) {
+            .home-btn, .back-btn {
+                width: 40px;
+                height: 40px;
+            }
+            .home-btn i, .back-btn i {
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -43,15 +52,29 @@
             </div>
         </div>
 
+        <!-- Flash сообщения -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Кнопка Назад (левая нижняя) - показывать везде, кроме главной -->
     {% if request.endpoint != 'index' %}
     <button onclick="history.back()" class="btn btn-secondary back-btn" title="Назад">
         <i class="bi bi-arrow-left fs-4"></i>
     </button>
     {% endif %}
 
+    <!-- Кнопка Домой (правая нижняя) - показывать везде, кроме главной -->
     {% if request.endpoint != 'index' %}
     <a href="/" class="btn btn-primary home-btn" title="Главная">
         <i class="bi bi-house-door-fill fs-4"></i>

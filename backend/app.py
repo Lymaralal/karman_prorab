@@ -2,7 +2,7 @@ import os
 import tempfile
 from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash
 from flask_sqlalchemy import SQLAlchemy
 from weasyprint import HTML
 
@@ -11,6 +11,7 @@ app = Flask(__name__, template_folder='../frontend/templates', static_folder='..
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///karman_prorab.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 db = SQLAlchemy(app)
 
 # константы
@@ -112,7 +113,7 @@ class Setting(db.Model):
         db.session.commit()
 
 
-#вспомогательный функции 
+# вспомогательные функции 
 
 def calculate_progress(project):
     timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
@@ -163,14 +164,34 @@ def services():
 @app.route('/services/add', methods=['GET', 'POST'])
 def add_service():
     if request.method == 'POST':
-        service = Service(
-            name=request.form['name'],
-            unit=request.form['unit'],
-            price=float(request.form['price'])
-        )
-        db.session.add(service)
-        db.session.commit()
-        return redirect(url_for('services'))
+        try:
+            name = request.form.get('name')
+            unit = request.form.get('unit')
+            price = request.form.get('price')
+            
+            if not name or not unit or not price:
+                flash('Все поля обязательны для заполнения', 'danger')
+                return redirect(url_for('add_service'))
+            
+            price = float(price)
+            if price < 0:
+                flash('Цена не может быть отрицательной', 'danger')
+                return redirect(url_for('add_service'))
+            
+            service = Service(name=name, unit=unit, price=price)
+            db.session.add(service)
+            db.session.commit()
+            flash('Услуга успешно добавлена', 'success')
+            return redirect(url_for('services'))
+            
+        except ValueError:
+            flash('Цена должна быть числом', 'danger')
+            return redirect(url_for('add_service'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при добавлении услуги: {str(e)}', 'danger')
+            return redirect(url_for('add_service'))
+    
     return render_template('add_service.html')
 
 
@@ -178,18 +199,28 @@ def add_service():
 def edit_service(id):
     service = Service.query.get_or_404(id)
     if request.method == 'POST':
-        service.name = request.form['name']
-        service.unit = request.form['unit']
-        service.price = float(request.form['price'])
-        db.session.commit()
-        return redirect(url_for('services'))
+        try:
+            service.name = request.form['name']
+            service.unit = request.form['unit']
+            service.price = float(request.form['price'])
+            db.session.commit()
+            flash('Услуга успешно обновлена', 'success')
+            return redirect(url_for('services'))
+        except Exception as e:
+            flash(f'Ошибка при обновлении: {str(e)}', 'danger')
+            return redirect(url_for('edit_service', id=id))
     return render_template('edit_service.html', service=service)
 
 
 @app.route('/services/delete/<int:id>')
 def delete_service(id):
-    db.session.delete(Service.query.get_or_404(id))
-    db.session.commit()
+    try:
+        service = Service.query.get_or_404(id)
+        db.session.delete(service)
+        db.session.commit()
+        flash('Услуга удалена', 'success')
+    except Exception as e:
+        flash(f'Ошибка при удалении: {str(e)}', 'danger')
     return redirect(url_for('services'))
 
 
@@ -201,8 +232,12 @@ def categories():
 @app.route('/categories/add', methods=['GET', 'POST'])
 def add_category():
     if request.method == 'POST':
-        db.session.add(ProductCategory(name=request.form['name']))
-        db.session.commit()
+        try:
+            db.session.add(ProductCategory(name=request.form['name']))
+            db.session.commit()
+            flash('Категория добавлена', 'success')
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
         return redirect(url_for('categories'))
     return render_template('add_category.html')
 
@@ -211,17 +246,25 @@ def add_category():
 def edit_category(id):
     category = ProductCategory.query.get_or_404(id)
     if request.method == 'POST':
-        category.name = request.form['name']
-        db.session.commit()
-        return redirect(url_for('categories'))
+        try:
+            category.name = request.form['name']
+            db.session.commit()
+            flash('Категория обновлена', 'success')
+            return redirect(url_for('categories'))
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
     return render_template('edit_category.html', category=category)
 
 
 @app.route('/categories/delete/<int:id>')
 def delete_category(id):
-    Product.query.filter_by(category_id=id).delete()
-    db.session.delete(ProductCategory.query.get_or_404(id))
-    db.session.commit()
+    try:
+        Product.query.filter_by(category_id=id).delete()
+        db.session.delete(ProductCategory.query.get_or_404(id))
+        db.session.commit()
+        flash('Категория удалена', 'success')
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
     return redirect(url_for('categories'))
 
 
@@ -241,16 +284,20 @@ def products_by_category(category_id):
 @app.route('/products/add', methods=['GET', 'POST'])
 def add_product():
     if request.method == 'POST':
-        product = Product(
-            category_id=int(request.form['category_id']),
-            name=request.form['name'],
-            unit=request.form['unit'],
-            price=float(request.form['price']),
-            description=request.form.get('description', '')
-        )
-        db.session.add(product)
-        db.session.commit()
-        return redirect(url_for('products'))
+        try:
+            product = Product(
+                category_id=int(request.form['category_id']),
+                name=request.form['name'],
+                unit=request.form['unit'],
+                price=float(request.form['price']),
+                description=request.form.get('description', '')
+            )
+            db.session.add(product)
+            db.session.commit()
+            flash('Продукт добавлен', 'success')
+            return redirect(url_for('products'))
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
     return render_template('add_product.html', categories=ProductCategory.query.all())
 
 
@@ -258,20 +305,28 @@ def add_product():
 def edit_product(id):
     product = Product.query.get_or_404(id)
     if request.method == 'POST':
-        product.category_id = int(request.form['category_id'])
-        product.name = request.form['name']
-        product.unit = request.form['unit']
-        product.price = float(request.form['price'])
-        product.description = request.form.get('description', '')
-        db.session.commit()
-        return redirect(url_for('products'))
+        try:
+            product.category_id = int(request.form['category_id'])
+            product.name = request.form['name']
+            product.unit = request.form['unit']
+            product.price = float(request.form['price'])
+            product.description = request.form.get('description', '')
+            db.session.commit()
+            flash('Продукт обновлён', 'success')
+            return redirect(url_for('products'))
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
     return render_template('edit_product.html', product=product, categories=ProductCategory.query.all())
 
 
 @app.route('/products/delete/<int:id>')
 def delete_product(id):
-    db.session.delete(Product.query.get_or_404(id))
-    db.session.commit()
+    try:
+        db.session.delete(Product.query.get_or_404(id))
+        db.session.commit()
+        flash('Продукт удалён', 'success')
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
     return redirect(url_for('products'))
 
 
@@ -286,23 +341,31 @@ def projects():
 @app.route('/projects/add', methods=['GET', 'POST'])
 def add_project():
     if request.method == 'POST':
-        project = Project(
-            name=request.form['name'],
-            address=request.form['address'],
-            status=request.form.get('status', 'В работе'),
-            client_name=request.form.get('client_name'),
-            client_phone=request.form.get('client_phone')
-        )
-        db.session.add(project)
-        db.session.commit()
-        return redirect(url_for('projects'))
+        try:
+            project = Project(
+                name=request.form['name'],
+                address=request.form['address'],
+                status=request.form.get('status', 'В работе'),
+                client_name=request.form.get('client_name'),
+                client_phone=request.form.get('client_phone')
+            )
+            db.session.add(project)
+            db.session.commit()
+            flash('Проект создан', 'success')
+            return redirect(url_for('projects'))
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
     return render_template('add_project.html')
 
 
 @app.route('/projects/delete/<int:id>')
 def delete_project(id):
-    db.session.delete(Project.query.get_or_404(id))
-    db.session.commit()
+    try:
+        db.session.delete(Project.query.get_or_404(id))
+        db.session.commit()
+        flash('Проект удалён', 'success')
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
     return redirect(url_for('projects'))
 
 
@@ -503,6 +566,7 @@ def settings():
         Setting.set('company_phone', request.form.get('company_phone', ''))
         Setting.set('company_email', request.form.get('company_email', ''))
         Setting.set('company_inn', request.form.get('company_inn', ''))
+        flash('Настройки сохранены', 'success')
         return redirect(url_for('settings'))
     
     return render_template('settings.html',
@@ -512,10 +576,11 @@ def settings():
                          company_inn=Setting.get('company_inn', ''))
 
 
-# PDF генерация 
+#  PDF генерация
 
 @app.route('/project/<int:project_id>/estimate/pdf')
 def project_estimate_pdf(project_id):
+    mode = request.args.get('mode', 'full')
     project = Project.query.get_or_404(project_id)
     works = ProjectWork.query.filter_by(project_id=project_id).all()
     timeline = ProjectTimeline.query.filter_by(project_id=project_id).first()
@@ -533,7 +598,12 @@ def project_estimate_pdf(project_id):
             'total': w.total_price
         })
     
-    html_content = render_template('pdf_estimate.html',
+    if mode == 'short':
+        template_name = 'pdf_estimate_short.html'
+    else:
+        template_name = 'pdf_estimate.html'
+    
+    html_content = render_template(template_name,
                                  project=project,
                                  works=works_list,
                                  total_income=total_income,
@@ -550,11 +620,10 @@ def project_estimate_pdf(project_id):
     return send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf')
 
 
-# AJAX маршруты для автосохранения 
+#  AJAX маршруты
 
 @app.route('/project/<int:project_id>/autosave', methods=['POST'])
 def autosave(project_id):
-    """Универсальное автосохранение любого поля проекта"""
     try:
         data = request.get_json()
         field = data.get('field')
@@ -562,7 +631,6 @@ def autosave(project_id):
         
         project = Project.query.get_or_404(project_id)
         
-        # поля из вкладки "Основное"
         if field == 'name':
             project.name = value
         elif field == 'address':
@@ -575,8 +643,6 @@ def autosave(project_id):
             project.client_phone = value
         elif field == 'actual_end_date':
             project.actual_end_date = value
-            
-        # даты из Timeline
         elif field == 'start_date':
             timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
             if not timeline:
@@ -589,37 +655,27 @@ def autosave(project_id):
                 timeline = ProjectTimeline(project_id=project.id)
                 db.session.add(timeline)
             timeline.end_date = value
-            
-        # количество работы в смете
         elif field.startswith('work_qty_'):
             work_id = int(field.split('_')[-1])
             work = ProjectWork.query.get(work_id)
             if work:
                 work.quantity = float(value)
                 work.total_price = work.service.price * work.quantity
-                
-        # название расхода
         elif field.startswith('expense_name_'):
             expense_id = int(field.split('_')[-1])
             expense = Expense.query.get(expense_id)
             if expense:
                 expense.name = value
-                
-        # сумма расхода
         elif field.startswith('expense_amount_'):
             expense_id = int(field.split('_')[-1])
             expense = Expense.query.get(expense_id)
             if expense:
                 expense.amount = float(value)
-                
-        # статус покупки
         elif field.startswith('purchased_'):
             purchase_id = int(field.split('_')[-1])
             purchase = Purchase.query.get(purchase_id)
             if purchase:
                 purchase.is_purchased = value == 'true' or value is True
-                
-        # количество покупки
         elif field.startswith('purchase_quantity_'):
             purchase_id = int(field.split('_')[-1])
             purchase = Purchase.query.get(purchase_id)
@@ -636,7 +692,6 @@ def autosave(project_id):
 
 @app.route('/project/<int:project_id>/add_expense_ajax', methods=['POST'])
 def add_expense_ajax(project_id):
-    """Добавление расхода без перезагрузки страницы"""
     try:
         data = request.get_json()
         expense = Expense(
@@ -659,7 +714,6 @@ def add_expense_ajax(project_id):
 
 @app.route('/project/<int:project_id>/add_purchase_ajax', methods=['POST'])
 def add_purchase_ajax(project_id):
-    """Добавление покупки без перезагрузки страницы"""
     try:
         data = request.get_json()
         purchase = Purchase(
@@ -682,7 +736,6 @@ def add_purchase_ajax(project_id):
 
 @app.route('/project/<int:project_id>/delete_expense_ajax/<int:expense_id>', methods=['DELETE'])
 def delete_expense_ajax(project_id, expense_id):
-    """Удаление расхода без перезагрузки страницы"""
     try:
         expense = Expense.query.get_or_404(expense_id)
         db.session.delete(expense)
@@ -694,7 +747,6 @@ def delete_expense_ajax(project_id, expense_id):
 
 @app.route('/project/<int:project_id>/delete_purchase_ajax/<int:purchase_id>', methods=['DELETE'])
 def delete_purchase_ajax(project_id, purchase_id):
-    """Удаление покупки без перезагрузки страницы"""
     try:
         purchase = Purchase.query.get_or_404(purchase_id)
         db.session.delete(purchase)
@@ -702,10 +754,10 @@ def delete_purchase_ajax(project_id, purchase_id):
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
-    
+
+
 @app.route('/project/<int:project_id>/get_totals')
 def get_totals(project_id):
-    """Возвращает актуальные итоги по проекту (доход, расходы, прибыль)"""
     project = Project.query.get_or_404(project_id)
     works = ProjectWork.query.filter_by(project_id=project_id).all()
     expenses = Expense.query.filter_by(project_id=project_id).all()
@@ -726,6 +778,5 @@ with app.app_context():
     db.create_all()
 
 
-# запуск
 if __name__ == '__main__':
     app.run(debug=True)

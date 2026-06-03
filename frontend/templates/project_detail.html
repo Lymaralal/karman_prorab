@@ -4,18 +4,24 @@
 
 {% block content %}
 
-<!-- Кнопки действий -->
+<!-- кнопки действий -->
 <div class="d-flex justify-content-end gap-2 mb-3">
-    <a href="/project/{{ project.id }}/estimate/pdf" class="btn btn-danger" target="_blank">
-        📄 Скачать смету PDF
-    </a>
+    <div class="btn-group">
+        <button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown">
+            📄 Скачать смету
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=full" target="_blank">📊 Полная (с ценами)</a></li>
+            <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=short" target="_blank">📋 Краткая (только итоги)</a></li>
+        </ul>
+    </div>
     <button type="submit" form="mainForm" class="btn btn-success">💾 Сохранить все изменения</button>
 </div>
 
-<!-- Форма, которая объединяет всё -->
+<!-- ворма, которая объединяет всё -->
 <form id="mainForm" method="POST" action="/project/{{ project.id }}/save_all">
     
-    <!-- Скрытое поле для запоминания активной вкладки -->
+    <!-- скрытое поле для запоминания активной вкладки -->
     <input type="hidden" name="active_tab" id="active_tab" value="main">
 
     <!-- Вкладки -->
@@ -36,7 +42,7 @@
 
     <div class="tab-content">
         
-        <!-- ========== ВКЛАДКА "ОСНОВНОЕ" ========== -->
+        <!-- вкладка "основное" -->
         <div class="tab-pane fade show active" id="main" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
@@ -98,10 +104,10 @@
             </div>
         </div>
         
-        <!-- ========== ВКЛАДКА "СМЕТА" ========== -->
+        <!-- вкладка "смета" -->
         <div class="tab-pane fade" id="estimate" role="tabpanel">
             
-            <!-- Быстрое добавление услуги (старый способ) -->
+            <!-- Быстрое добавление услуги -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">⚡ Быстрое добавление услуги</h5>
@@ -126,34 +132,39 @@
                 </div>
             </div>
 
-            <!-- Добавление из шаблона (категория → продукт) -->
+            <!-- добавление из шаблона (категория → продукт) - СПРЯТАНО ЗА КНОПКУ -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">📦 Добавить из шаблона</h5>
+                    <h5 class="mb-0">
+                        📦 Добавить из шаблона
+                        <button type="button" class="btn btn-sm btn-light float-end" onclick="toggleTemplates()">Показать</button>
+                    </h5>
                 </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <select id="categorySelect" class="form-select">
-                                <option value="">Выберите категорию</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}">{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <select id="productSelect" name="product_id" class="form-select" disabled>
-                                <option value="">Сначала выберите категорию</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" id="addFromTemplateBtn" class="btn btn-info w-100" disabled>➕ Добавить</button>
+                <div id="templatesBlock" style="display: none;">
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <select id="categorySelect" class="form-select">
+                                    <option value="">Выберите категорию</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <select id="productSelect" name="product_id" class="form-select" disabled>
+                                    <option value="">Сначала выберите категорию</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" id="addFromTemplateBtn" class="btn btn-info w-100" disabled>➕ Добавить</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Список работ в смете -->
+            <!-- список работ в смете -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-secondary text-white">
                     <h5 class="mb-0">💰 Смета работ (доход)</h5>
@@ -170,13 +181,13 @@
                                     <th></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="works-table-body">
                                 {% for work in works %}
-                                <tr>
+                                <tr id="work-row-{{ work.id }}">
                                     <td>{{ work.service.name }}</td>
-                                    <td><input type="number" step="0.01" name="work_qty_{{ work.id }}" value="{{ work.quantity }}" class="form-control form-control-sm" style="width: 120px;"> {{ work.service.unit }}</td>
+                                    <td><input type="number" step="0.01" name="work_qty_{{ work.id }}" value="{{ work.quantity }}" class="form-control form-control-sm work-qty" style="width: 120px;" data-work-id="{{ work.id }}"> {{ work.service.unit }}</td>
                                     <td>{{ work.service.price }} руб</td>
-                                    <td>{{ work.total_price }} руб</td>
+                                    <td class="work-total" id="work-total-{{ work.id }}">{{ work.total_price }} руб</td>
                                     <td><a href="/project/{{ project.id }}/delete_work/{{ work.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить работу?')">✖️</a></td>
                                 </tr>
                                 {% endfor %}
@@ -184,50 +195,48 @@
                         </table>
                     </div>
                     <div class="alert alert-success">
-                        <strong>💰 Доход по смете: {{ total }} руб</strong>
+                        <strong>💰 Доход по смете: <span id="total_income">{{ total }} руб</span></strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Расходы -->
+            <!-- расходы -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0">📉 Расходы по проекту</h5>
                 </div>
                 <div class="card-body">
-                    {% for expense in expenses %}
-                    <div class="row g-2 mb-2 align-items-center">
-                        <div class="col-md-5">
-                            <input type="text" name="expense_name_{{ expense.id }}" value="{{ expense.name }}" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-md-4">
-                            <input type="number" step="0.01" name="expense_amount_{{ expense.id }}" value="{{ expense.amount }}" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-md-3">
-                            <a href="/project/{{ project.id }}/delete_expense/{{ expense.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a>
-                        </div>
-                    </div>
-                    {% endfor %}
+                    <table class="table" id="expenses-table">
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr id="expense-row-{{ expense.id }}">
+                                <td><input type="text" name="expense_name_{{ expense.id }}" value="{{ expense.name }}" class="form-control form-control-sm"></td>
+                                <td><input type="number" step="0.01" name="expense_amount_{{ expense.id }}" value="{{ expense.amount }}" class="form-control form-control-sm"></td>
+                                <td><a href="/project/{{ project.id }}/delete_expense/{{ expense.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                     <hr>
                     <div class="row g-2 mt-2">
                         <div class="col-md-5">
-                            <input type="text" name="new_expense_name" class="form-control" placeholder="Новый расход">
+                            <input type="text" id="new_expense_name" class="form-control" placeholder="Новый расход">
                         </div>
                         <div class="col-md-4">
-                            <input type="number" step="0.01" name="new_expense_amount" class="form-control" placeholder="Сумма">
+                            <input type="number" step="0.01" id="new_expense_amount" class="form-control" placeholder="Сумма">
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" name="add_expense" value="1" class="btn btn-danger w-100">➕ Добавить расход</button>
+                            <button type="button" id="addExpenseBtn" class="btn btn-danger w-100">➕ Добавить расход</button>
                         </div>
                     </div>
                     {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
                     <div class="alert alert-danger mt-3">
-                        <strong>📉 Всего расходов: {{ total_expenses }} руб</strong>
+                        <strong>📉 Всего расходов: <span id="total_expenses">{{ total_expenses }} руб</span></strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Список покупок -->
+            <!-- список покупок -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">🛒 Список покупок</h5>
@@ -237,24 +246,27 @@
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" name="purchased_{{ purchase.id }}" id="purchased_{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}>
                         <label class="form-check-label {% if purchase.is_purchased %}text-decoration-line-through text-muted{% endif %}" for="purchased_{{ purchase.id }}">
-                            {{ purchase.name }}
+                            {{ purchase.name }} (x{{ purchase.quantity }})
                         </label>
                         <a href="/project/{{ project.id }}/delete_purchase/{{ purchase.id }}" class="btn btn-sm btn-outline-danger float-end" onclick="return confirm('Удалить покупку?')">✖️</a>
                     </div>
                     {% endfor %}
                     <hr>
                     <div class="row g-2 mt-2">
-                        <div class="col-md-8">
-                            <input type="text" name="new_purchase_name" class="form-control" placeholder="Что нужно купить?">
+                        <div class="col-md-6">
+                            <input type="text" id="new_purchase_name" class="form-control" placeholder="Что нужно купить?">
                         </div>
-                        <div class="col-md-4">
-                            <button type="submit" name="add_purchase" value="1" class="btn btn-info w-100">➕ Добавить</button>
+                        <div class="col-md-3">
+                            <input type="number" id="new_purchase_quantity" class="form-control" placeholder="Кол-во" value="1">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" id="addPurchaseBtn" class="btn btn-info w-100">➕ Добавить</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Прибыль -->
+            <!-- прибыль -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">💸 Итоговая прибыль</h5>
@@ -262,7 +274,7 @@
                 <div class="card-body text-center">
                     {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
                     {% set profit = total - total_expenses %}
-                    <h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                    <h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}" id="profit">
                         💵 {{ profit }} руб
                     </h2>
                     <p class="text-muted">Доход (💰 {{ total }} руб) — Расходы (📉 {{ total_expenses }} руб)</p>
@@ -270,7 +282,7 @@
             </div>
         </div>
         
-        <!-- ========== ВКЛАДКА "ФАЙЛЫ" (заглушка) ========== -->
+        <!-- вкладка "файлы"-->
         <div class="tab-pane fade" id="files" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
@@ -283,7 +295,7 @@
             </div>
         </div>
         
-        <!-- ========== ВКЛАДКА "ФОТО" (заглушка) ========== -->
+        <!--  вкладка "фото" -->
         <div class="tab-pane fade" id="photos" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
@@ -325,6 +337,15 @@
         font-weight: bold;
         z-index: 1;
     }
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 12px;
+        }
+        .btn-group .btn {
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+    }
 </style>
 
 <script>
@@ -344,6 +365,127 @@
                 bsTab.show();
             }
         }
+    });
+
+    // Показать/скрыть блок шаблонов
+    window.toggleTemplates = function() {
+        const block = document.getElementById('templatesBlock');
+        if (block.style.display === 'none') {
+            block.style.display = 'block';
+        } else {
+            block.style.display = 'none';
+        }
+    }
+
+    // AJAX добавление расхода
+    const addExpenseBtn = document.getElementById('addExpenseBtn');
+    if (addExpenseBtn) {
+        addExpenseBtn.addEventListener('click', function() {
+            const name = document.getElementById('new_expense_name').value;
+            const amount = document.getElementById('new_expense_amount').value;
+
+            if (!name || !amount) {
+                alert('Заполните название и сумму расхода');
+                return;
+            }
+
+            fetch(`/project/{{ project.id }}/add_expense_ajax`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, amount: parseFloat(amount) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const table = document.getElementById('expenses-table').querySelector('tbody');
+                    const newRow = table.insertRow();
+                    newRow.id = `expense-row-${data.expense_id}`;
+                    newRow.innerHTML = `
+                        <td><input type="text" name="expense_name_${data.expense_id}" value="${data.name}" class="form-control form-control-sm"></td>
+                        <td><input type="number" step="0.01" name="expense_amount_${data.expense_id}" value="${data.amount}" class="form-control form-control-sm"></td>
+                        <td><a href="/project/{{ project.id }}/delete_expense/${data.expense_id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a></td>
+                    `;
+                    
+                    document.getElementById('new_expense_name').value = '';
+                    document.getElementById('new_expense_amount').value = '';
+                    
+                    // Обновляем итоги
+                    fetch(`/project/{{ project.id }}/get_totals`)
+                        .then(res => res.json())
+                        .then(totals => {
+                            document.getElementById('total_income').innerText = totals.total_income + ' руб';
+                            document.getElementById('total_expenses').innerText = totals.total_expenses + ' руб';
+                            const profitElem = document.getElementById('profit');
+                            profitElem.innerText = '💵 ' + totals.profit + ' руб';
+                            if (totals.profit > 0) {
+                                profitElem.className = 'text-success';
+                            } else if (totals.profit < 0) {
+                                profitElem.className = 'text-danger';
+                            } else {
+                                profitElem.className = 'text-secondary';
+                            }
+                        });
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            });
+        });
+    }
+
+    // AJAX добавление покупки
+    const addPurchaseBtn = document.getElementById('addPurchaseBtn');
+    if (addPurchaseBtn) {
+        addPurchaseBtn.addEventListener('click', function() {
+            const name = document.getElementById('new_purchase_name').value;
+            const quantity = document.getElementById('new_purchase_quantity').value;
+
+            if (!name) {
+                alert('Введите название покупки');
+                return;
+            }
+
+            fetch(`/project/{{ project.id }}/add_purchase_ajax`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, quantity: parseInt(quantity) || 1 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            });
+        });
+    }
+
+    // Автосохранение количества работ
+    document.querySelectorAll('.work-qty').forEach(input => {
+        input.addEventListener('change', function() {
+            const workId = this.dataset.workId;
+            const newQty = this.value;
+            
+            fetch(`/project/{{ project.id }}/autosave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: `work_qty_${workId}`, value: parseFloat(newQty) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем итоги
+                    fetch(`/project/{{ project.id }}/get_totals`)
+                        .then(res => res.json())
+                        .then(totals => {
+                            document.getElementById('total_income').innerText = totals.total_income + ' руб';
+                            document.getElementById('total_expenses').innerText = totals.total_expenses + ' руб';
+                            const profitElem = document.getElementById('profit');
+                            profitElem.innerText = '💵 ' + totals.profit + ' руб';
+                        });
+                }
+            });
+        });
     });
 </script>
 
@@ -365,59 +507,61 @@
     const productSelect = document.getElementById('productSelect');
     const addFromTemplateBtn = document.getElementById('addFromTemplateBtn');
 
-    categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
-        if (categoryId) {
-            fetch(`/products/by-category/${categoryId}`)
-                .then(response => response.json())
-                .then(products => {
-                    productSelect.innerHTML = '<option value="">Выберите продукт</option>';
-                    products.forEach(product => {
-                        productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price} руб)</option>`;
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            if (categoryId) {
+                fetch(`/products/by-category/${categoryId}`)
+                    .then(response => response.json())
+                    .then(products => {
+                        productSelect.innerHTML = '<option value="">Выберите продукт</option>';
+                        products.forEach(product => {
+                            productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price} руб)</option>`;
+                        });
+                        productSelect.disabled = false;
                     });
-                    productSelect.disabled = false;
-                });
-        } else {
-            productSelect.innerHTML = '<option value="">Сначала выберите категорию</option>';
-            productSelect.disabled = true;
-            addFromTemplateBtn.disabled = true;
-        }
-    });
-
-    productSelect.addEventListener('change', function() {
-        addFromTemplateBtn.disabled = !this.value;
-    });
-
-    addFromTemplateBtn.addEventListener('click', function() {
-        const productId = productSelect.value;
-        const productUnit = productSelect.options[productSelect.selectedIndex]?.getAttribute('data-unit');
-        
-        if (productId) {
-            const quantity = prompt(`Введите количество (${productUnit}):`, "1");
-            if (quantity && !isNaN(quantity) && parseFloat(quantity) > 0) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/project/{{ project.id }}/add_product_work`;
-                
-                const productIdInput = document.createElement('input');
-                productIdInput.type = 'hidden';
-                productIdInput.name = 'product_id';
-                productIdInput.value = productId;
-                form.appendChild(productIdInput);
-                
-                const quantityInput = document.createElement('input');
-                quantityInput.type = 'hidden';
-                quantityInput.name = 'quantity';
-                quantityInput.value = quantity;
-                form.appendChild(quantityInput);
-                
-                document.body.appendChild(form);
-                form.submit();
             } else {
-                alert('Пожалуйста, введите корректное количество');
+                productSelect.innerHTML = '<option value="">Сначала выберите категорию</option>';
+                productSelect.disabled = true;
+                addFromTemplateBtn.disabled = true;
             }
-        }
-    });
+        });
+
+        productSelect.addEventListener('change', function() {
+            addFromTemplateBtn.disabled = !this.value;
+        });
+
+        addFromTemplateBtn.addEventListener('click', function() {
+            const productId = productSelect.value;
+            const productUnit = productSelect.options[productSelect.selectedIndex]?.getAttribute('data-unit');
+            
+            if (productId) {
+                const quantity = prompt(`Введите количество (${productUnit}):`, "1");
+                if (quantity && !isNaN(quantity) && parseFloat(quantity) > 0) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/project/{{ project.id }}/add_product_work`;
+                    
+                    const productIdInput = document.createElement('input');
+                    productIdInput.type = 'hidden';
+                    productIdInput.name = 'product_id';
+                    productIdInput.value = productId;
+                    form.appendChild(productIdInput);
+                    
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'hidden';
+                    quantityInput.name = 'quantity';
+                    quantityInput.value = quantity;
+                    form.appendChild(quantityInput);
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                } else {
+                    alert('Пожалуйста, введите корректное количество');
+                }
+            }
+        });
+    }
 </script>
 
 {% endblock %}

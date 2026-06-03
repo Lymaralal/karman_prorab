@@ -154,17 +154,15 @@
     {% endif %}
 </div>
 
-<h3>💰 СМЕТА РАБОТ</h3>
+<h3>💰 СМЕТА РАБОТ (КРАТКАЯ)</h3>
 
 {% if works %}
 <table>
     <thead>
         <tr>
             <th style="width: 5%;">№</th>
-            <th style="width: 50%;">Наименование работ</th>
-            <th style="width: 10%;">Ед.изм</th>
+            <th style="width: 70%;">Наименование работ</th>
             <th style="width: 10%;">Кол-во</th>
-            <th style="width: 10%;">Цена</th>
             <th style="width: 15%;">Стоимость</th>
         </tr>
     </thead>
@@ -173,14 +171,12 @@
         <tr>
             <td class="text-right">{{ work.num }}</td>
             <td>{{ work.name }}</td>
-            <td>{{ work.unit }}</td>
-            <td class="text-right">{{ "%.2f"|format(work.quantity) }}</td>
-            <td class="text-right">{{ "%.2f"|format(work.price) }} ₽</td>
+            <td class="text-right">{{ "%.2f"|format(work.quantity) }} {{ work.unit }}</td>
             <td class="text-right">{{ "%.2f"|format(work.total) }} ₽</td>
         </tr>
         {% endfor %}
         <tr class="total-row">
-            <td colspan="5" class="text-right"><strong>ИТОГО:</strong></td>
+            <td colspan="3" class="text-right"><strong>ИТОГО:</strong></td>
             <td class="text-right"><strong>{{ "%.2f"|format(total_income) }} ₽</strong></td>
         </tr>
     </tbody>
@@ -194,7 +190,7 @@
 </div>
 
 <div class="project-details">
-    <p><strong>📌 Комментарий:</strong> В смету включены все материалы, работы и доставка. Цены действительны в течение 30 дней.</p>
+    <p><strong>📌 Комментарий:</strong> Детализация по ценам доступна по запросу. Цены действительны в течение 30 дней.</p>
 </div>
 
 <div class="signature">
