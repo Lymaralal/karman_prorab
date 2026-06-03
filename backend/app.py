@@ -41,6 +41,16 @@ def format_number(value):
     
     return str(value)
 
+@app.template_filter('ru_date')
+def ru_date(date_str):
+    """Преобразует ГГГГ-ММ-ДД → ДД.ММ.ГГГГ"""
+    if not date_str:
+        return ''
+    parts = str(date_str).split('-')
+    if len(parts) == 3:
+        return f"{parts[2]}.{parts[1]}.{parts[0]}"
+    return date_str
+
 
 # модели 
 
