@@ -75,25 +75,28 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">📅 Дата начала:</label>
-                            <input type="date" name="start_date" value="{{ timeline.start_date if timeline else '' }}" class="form-control">
+                            <input type="date" name="start_date" id="start_date" value="{{ timeline.start_date if timeline else '' }}" class="form-control">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">⏳ Плановая дата окончания:</label>
-                            <input type="date" name="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control">
+                            <input type="date" name="end_date" id="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">✅ Фактическая дата окончания:</label>
-                            <input type="date" name="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control">
+                            <input type="date" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control">
                         </div>
                     </div>
-                    {% if timeline and timeline.start_date and timeline.end_date %}
+                    
+                    <!-- Прогресс выполнения (показываем всегда) -->
                     <div class="text-center mt-4">
                         <label class="form-label fw-bold">📈 Прогресс выполнения</label>
                         <div class="progress-circle mx-auto" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
                             <span class="progress-text">{{ progress }}%</span>
                         </div>
+                        {% if not timeline or not timeline.start_date or not timeline.end_date %}
+                            <small class="text-muted d-block mt-2">(Для расчёта прогресса укажите даты начала и окончания)</small>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -353,6 +356,34 @@
         const block = document.getElementById('templatesBlock');
         block.style.display = block.style.display === 'none' ? 'block' : 'none';
     }
+
+    // Автосохранение дат с перезагрузкой
+    document.getElementById('start_date')?.addEventListener('change', function() {
+        const value = this.value;
+        fetch(`/project/{{ project.id }}/autosave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: 'start_date', value: value })
+        }).then(() => location.reload());
+    });
+
+    document.getElementById('end_date')?.addEventListener('change', function() {
+        const value = this.value;
+        fetch(`/project/{{ project.id }}/autosave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: 'end_date', value: value })
+        }).then(() => location.reload());
+    });
+
+    document.getElementById('actual_end_date')?.addEventListener('change', function() {
+        const value = this.value;
+        fetch(`/project/{{ project.id }}/autosave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: 'actual_end_date', value: value })
+        }).then(() => location.reload());
+    });
 
     // AJAX добавление услуги
     document.getElementById('addWorkBtn').addEventListener('click', function() {
