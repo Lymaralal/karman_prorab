@@ -23,6 +23,25 @@ def inject_globals():
     return {'project_statuses': PROJECT_STATUSES}
 
 
+# фильтр для форматирования чисел
+@app.template_filter('format_number')
+def format_number(value):
+    """Форматирует число: без .0 для целых, разделитель тысяч, 2 знака для копеек"""
+    if value is None:
+        return '0'
+    
+    if isinstance(value, float) and value.is_integer():
+        return f"{int(value):,}".replace(',', ' ')
+    
+    if isinstance(value, (int, float)):
+        formatted = f"{value:,.2f}".replace(',', ' ')
+        if formatted.endswith('.00'):
+            return formatted[:-3]
+        return formatted
+    
+    return str(value)
+
+
 # модели 
 
 class Service(db.Model):
@@ -576,7 +595,7 @@ def settings():
                          company_inn=Setting.get('company_inn', ''))
 
 
-#  PDF генерация
+#  PDF генерация 
 
 @app.route('/project/<int:project_id>/estimate/pdf')
 def project_estimate_pdf(project_id):
@@ -690,6 +709,39 @@ def autosave(project_id):
         return jsonify({'success': False, 'message': str(e)}), 400
 
 
+@app.route('/project/<int:project_id>/add_work_ajax', methods=['POST'])
+def add_work_ajax(project_id):
+    """Добавление работы в смету без перезагрузки страницы"""
+    try:
+        data = request.get_json()
+        service_id = data.get('service_id')
+        quantity = float(data.get('quantity'))
+        
+        service = Service.query.get_or_404(service_id)
+        total_price = service.price * quantity
+        
+        new_work = ProjectWork(
+            project_id=project_id,
+            service_id=service.id,
+            quantity=quantity,
+            total_price=total_price
+        )
+        db.session.add(new_work)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'work_id': new_work.id,
+            'service_name': service.name,
+            'unit': service.unit,
+            'quantity': quantity,
+            'price': service.price,
+            'total_price': total_price
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
 @app.route('/project/<int:project_id>/add_expense_ajax', methods=['POST'])
 def add_expense_ajax(project_id):
     try:
@@ -758,7 +810,6 @@ def delete_purchase_ajax(project_id, purchase_id):
 
 @app.route('/project/<int:project_id>/get_totals')
 def get_totals(project_id):
-    project = Project.query.get_or_404(project_id)
     works = ProjectWork.query.filter_by(project_id=project_id).all()
     expenses = Expense.query.filter_by(project_id=project_id).all()
     

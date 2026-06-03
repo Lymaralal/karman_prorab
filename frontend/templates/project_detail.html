@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<!-- кнопки действий -->
+<!-- Кнопки действий -->
 <div class="d-flex justify-content-end gap-2 mb-3">
     <div class="btn-group">
         <button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown">
@@ -15,16 +15,12 @@
             <li><a class="dropdown-item" href="/project/{{ project.id }}/estimate/pdf?mode=short" target="_blank">📋 Краткая (только итоги)</a></li>
         </ul>
     </div>
-    <button type="submit" form="mainForm" class="btn btn-success">💾 Сохранить все изменения</button>
 </div>
 
-<!-- ворма, которая объединяет всё -->
+<!-- Форма только для основных данных (не для сметы) -->
 <form id="mainForm" method="POST" action="/project/{{ project.id }}/save_all">
-    
-    <!-- скрытое поле для запоминания активной вкладки -->
     <input type="hidden" name="active_tab" id="active_tab" value="main">
 
-    <!-- Вкладки -->
     <ul class="nav nav-tabs mb-3" id="projectTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main" type="button" role="tab" onclick="setActiveTab('main')">📋 Основное</button>
@@ -41,8 +37,6 @@
     </ul>
 
     <div class="tab-content">
-        
-        <!-- вкладка "основное" -->
         <div class="tab-pane fade show active" id="main" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
@@ -104,10 +98,8 @@
             </div>
         </div>
         
-        <!-- вкладка "смета" -->
         <div class="tab-pane fade" id="estimate" role="tabpanel">
-            
-            <!-- Быстрое добавление услуги -->
+            <!-- Быстрое добавление услуги (AJAX) -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">⚡ Быстрое добавление услуги</h5>
@@ -115,24 +107,24 @@
                 <div class="card-body">
                     <div class="row g-2">
                         <div class="col-md-5">
-                            <select name="new_service_id" class="form-select">
+                            <select id="new_service_id" class="form-select">
                                 <option value="">Выберите услугу</option>
                                 {% for service in services %}
-                                <option value="{{ service.id }}">{{ service.name }} ({{ service.unit }} — {{ service.price }} руб)</option>
+                                <option value="{{ service.id }}" data-price="{{ service.price }}" data-unit="{{ service.unit }}">{{ service.name }} ({{ service.unit }} — {{ service.price | format_number }} руб)</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <input type="number" step="0.01" name="new_quantity" class="form-control" placeholder="Количество">
+                            <input type="number" step="0.01" id="new_quantity" class="form-control" placeholder="Количество" value="1">
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" name="add_work" value="1" class="btn btn-success w-100">➕ Добавить</button>
+                            <button type="button" id="addWorkBtn" class="btn btn-success w-100">➕ Добавить</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- добавление из шаблона (категория → продукт) - СПРЯТАНО ЗА КНОПКУ -->
+            <!-- Добавление из шаблона -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
@@ -152,7 +144,7 @@
                                 </select>
                             </div>
                             <div class="col-md-5">
-                                <select id="productSelect" name="product_id" class="form-select" disabled>
+                                <select id="productSelect" class="form-select" disabled>
                                     <option value="">Сначала выберите категорию</option>
                                 </select>
                             </div>
@@ -164,7 +156,7 @@
                 </div>
             </div>
 
-            <!-- список работ в смете -->
+            <!-- Список работ -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-secondary text-white">
                     <h5 class="mb-0">💰 Смета работ (доход)</h5>
@@ -185,9 +177,9 @@
                                 {% for work in works %}
                                 <tr id="work-row-{{ work.id }}">
                                     <td>{{ work.service.name }}</td>
-                                    <td><input type="number" step="0.01" name="work_qty_{{ work.id }}" value="{{ work.quantity }}" class="form-control form-control-sm work-qty" style="width: 120px;" data-work-id="{{ work.id }}"> {{ work.service.unit }}</td>
-                                    <td>{{ work.service.price }} руб</td>
-                                    <td class="work-total" id="work-total-{{ work.id }}">{{ work.total_price }} руб</td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm work-qty" style="width: 120px;" data-work-id="{{ work.id }}" value="{{ work.quantity }}"> {{ work.service.unit }}</td>
+                                    <td>{{ work.service.price | format_number }} руб</td>
+                                    <td class="work-total">{{ work.total_price | format_number }} руб</td>
                                     <td><a href="/project/{{ project.id }}/delete_work/{{ work.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить работу?')">✖️</a></td>
                                 </tr>
                                 {% endfor %}
@@ -195,12 +187,12 @@
                         </table>
                     </div>
                     <div class="alert alert-success">
-                        <strong>💰 Доход по смете: <span id="total_income">{{ total }} руб</span></strong>
+                        <strong>💰 Доход по смете: <span id="total_income">{{ total | format_number }} руб</span></strong>
                     </div>
                 </div>
             </div>
 
-            <!-- расходы -->
+            <!-- Расходы -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0">📉 Расходы по проекту</h5>
@@ -231,12 +223,12 @@
                     </div>
                     {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
                     <div class="alert alert-danger mt-3">
-                        <strong>📉 Всего расходов: <span id="total_expenses">{{ total_expenses }} руб</span></strong>
+                        <strong>📉 Всего расходов: <span id="total_expenses">{{ total_expenses | format_number }} руб</span></strong>
                     </div>
                 </div>
             </div>
 
-            <!-- список покупок -->
+            <!-- Покупки -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">🛒 Список покупок</h5>
@@ -266,7 +258,7 @@
                 </div>
             </div>
 
-            <!-- прибыль -->
+            <!-- Прибыль -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">💸 Итоговая прибыль</h5>
@@ -275,14 +267,13 @@
                     {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
                     {% set profit = total - total_expenses %}
                     <h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}" id="profit">
-                        💵 {{ profit }} руб
+                        💵 {{ profit | format_number }} руб
                     </h2>
-                    <p class="text-muted">Доход (💰 {{ total }} руб) — Расходы (📉 {{ total_expenses }} руб)</p>
+                    <p class="text-muted">Доход (💰 {{ total | format_number }} руб) — Расходы (📉 {{ total_expenses | format_number }} руб)</p>
                 </div>
             </div>
         </div>
         
-        <!-- вкладка "файлы"-->
         <div class="tab-pane fade" id="files" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
@@ -295,7 +286,6 @@
             </div>
         </div>
         
-        <!--  вкладка "фото" -->
         <div class="tab-pane fade" id="photos" role="tabpanel">
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
@@ -307,9 +297,7 @@
                 </div>
             </div>
         </div>
-        
     </div>
-
 </form>
 
 <style>
@@ -341,20 +329,14 @@
         .table-responsive {
             font-size: 12px;
         }
-        .btn-group .btn {
-            font-size: 12px;
-            padding: 6px 10px;
-        }
     }
 </style>
 
 <script>
-    // Запоминаем активную вкладку
     function setActiveTab(tabId) {
         document.getElementById('active_tab').value = tabId;
     }
     
-    // Открываем нужную вкладку из GET-параметра tab
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
         const tab = urlParams.get('tab');
@@ -367,104 +349,136 @@
         }
     });
 
-    // Показать/скрыть блок шаблонов
-    window.toggleTemplates = function() {
+    function toggleTemplates() {
         const block = document.getElementById('templatesBlock');
-        if (block.style.display === 'none') {
-            block.style.display = 'block';
-        } else {
-            block.style.display = 'none';
-        }
+        block.style.display = block.style.display === 'none' ? 'block' : 'none';
     }
+
+    // AJAX добавление услуги
+    document.getElementById('addWorkBtn').addEventListener('click', function() {
+        const serviceId = document.getElementById('new_service_id').value;
+        const quantity = document.getElementById('new_quantity').value;
+
+        if (!serviceId) {
+            alert('Выберите услугу');
+            return;
+        }
+        if (!quantity || quantity <= 0) {
+            alert('Введите корректное количество');
+            return;
+        }
+
+        fetch(`/project/{{ project.id }}/add_work_ajax`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ service_id: parseInt(serviceId), quantity: parseFloat(quantity) })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tbody = document.getElementById('works-table-body');
+                const newRow = tbody.insertRow();
+                newRow.id = `work-row-${data.work_id}`;
+                newRow.innerHTML = `
+                    <td>${data.service_name}</td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm work-qty" style="width: 120px;" data-work-id="${data.work_id}" value="${data.quantity}"> ${data.unit}</td>
+                    <td>${data.price.toLocaleString('ru-RU').replace(/,/g, ' ')} руб</td>
+                    <td class="work-total">${data.total_price.toLocaleString('ru-RU').replace(/,/g, ' ')} руб</td>
+                    <td><a href="/project/{{ project.id }}/delete_work/${data.work_id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить работу?')">✖️</a></td>
+                `;
+                
+                document.getElementById('new_quantity').value = '1';
+                
+                fetch(`/project/{{ project.id }}/get_totals`)
+                    .then(res => res.json())
+                    .then(totals => {
+                        document.getElementById('total_income').innerText = totals.total_income.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                        const profitElem = document.getElementById('profit');
+                        profitElem.innerText = '💵 ' + totals.profit.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                    });
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    });
 
     // AJAX добавление расхода
-    const addExpenseBtn = document.getElementById('addExpenseBtn');
-    if (addExpenseBtn) {
-        addExpenseBtn.addEventListener('click', function() {
-            const name = document.getElementById('new_expense_name').value;
-            const amount = document.getElementById('new_expense_amount').value;
+    document.getElementById('addExpenseBtn').addEventListener('click', function() {
+        const name = document.getElementById('new_expense_name').value;
+        const amount = document.getElementById('new_expense_amount').value;
 
-            if (!name || !amount) {
-                alert('Заполните название и сумму расхода');
-                return;
+        if (!name || !amount) {
+            alert('Заполните название и сумму расхода');
+            return;
+        }
+
+        fetch(`/project/{{ project.id }}/add_expense_ajax`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, amount: parseFloat(amount) })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const table = document.getElementById('expenses-table').querySelector('tbody');
+                const newRow = table.insertRow();
+                newRow.id = `expense-row-${data.expense_id}`;
+                newRow.innerHTML = `
+                    <td><input type="text" name="expense_name_${data.expense_id}" value="${data.name}" class="form-control form-control-sm"></td>
+                    <td><input type="number" step="0.01" name="expense_amount_${data.expense_id}" value="${data.amount}" class="form-control form-control-sm"></td>
+                    <td><a href="/project/{{ project.id }}/delete_expense/${data.expense_id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a></td>
+                `;
+                
+                document.getElementById('new_expense_name').value = '';
+                document.getElementById('new_expense_amount').value = '';
+                
+                fetch(`/project/{{ project.id }}/get_totals`)
+                    .then(res => res.json())
+                    .then(totals => {
+                        document.getElementById('total_income').innerText = totals.total_income.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                        document.getElementById('total_expenses').innerText = totals.total_expenses.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                        const profitElem = document.getElementById('profit');
+                        profitElem.innerText = '💵 ' + totals.profit.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                        if (totals.profit > 0) profitElem.className = 'text-success';
+                        else if (totals.profit < 0) profitElem.className = 'text-danger';
+                        else profitElem.className = 'text-secondary';
+                    });
+            } else {
+                alert('Ошибка: ' + data.message);
             }
-
-            fetch(`/project/{{ project.id }}/add_expense_ajax`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, amount: parseFloat(amount) })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const table = document.getElementById('expenses-table').querySelector('tbody');
-                    const newRow = table.insertRow();
-                    newRow.id = `expense-row-${data.expense_id}`;
-                    newRow.innerHTML = `
-                        <td><input type="text" name="expense_name_${data.expense_id}" value="${data.name}" class="form-control form-control-sm"></td>
-                        <td><input type="number" step="0.01" name="expense_amount_${data.expense_id}" value="${data.amount}" class="form-control form-control-sm"></td>
-                        <td><a href="/project/{{ project.id }}/delete_expense/${data.expense_id}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a></td>
-                    `;
-                    
-                    document.getElementById('new_expense_name').value = '';
-                    document.getElementById('new_expense_amount').value = '';
-                    
-                    // Обновляем итоги
-                    fetch(`/project/{{ project.id }}/get_totals`)
-                        .then(res => res.json())
-                        .then(totals => {
-                            document.getElementById('total_income').innerText = totals.total_income + ' руб';
-                            document.getElementById('total_expenses').innerText = totals.total_expenses + ' руб';
-                            const profitElem = document.getElementById('profit');
-                            profitElem.innerText = '💵 ' + totals.profit + ' руб';
-                            if (totals.profit > 0) {
-                                profitElem.className = 'text-success';
-                            } else if (totals.profit < 0) {
-                                profitElem.className = 'text-danger';
-                            } else {
-                                profitElem.className = 'text-secondary';
-                            }
-                        });
-                } else {
-                    alert('Ошибка: ' + data.message);
-                }
-            });
         });
-    }
+    });
 
     // AJAX добавление покупки
-    const addPurchaseBtn = document.getElementById('addPurchaseBtn');
-    if (addPurchaseBtn) {
-        addPurchaseBtn.addEventListener('click', function() {
-            const name = document.getElementById('new_purchase_name').value;
-            const quantity = document.getElementById('new_purchase_quantity').value;
+    document.getElementById('addPurchaseBtn').addEventListener('click', function() {
+        const name = document.getElementById('new_purchase_name').value;
+        const quantity = document.getElementById('new_purchase_quantity').value;
 
-            if (!name) {
-                alert('Введите название покупки');
-                return;
+        if (!name) {
+            alert('Введите название покупки');
+            return;
+        }
+
+        fetch(`/project/{{ project.id }}/add_purchase_ajax`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, quantity: parseInt(quantity) || 1 })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
             }
-
-            fetch(`/project/{{ project.id }}/add_purchase_ajax`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, quantity: parseInt(quantity) || 1 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Ошибка: ' + data.message);
-                }
-            });
         });
-    }
+    });
 
     // Автосохранение количества работ
-    document.querySelectorAll('.work-qty').forEach(input => {
-        input.addEventListener('change', function() {
-            const workId = this.dataset.workId;
-            const newQty = this.value;
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('work-qty')) {
+            const workId = e.target.dataset.workId;
+            const newQty = e.target.value;
             
             fetch(`/project/{{ project.id }}/autosave`, {
                 method: 'POST',
@@ -474,23 +488,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Обновляем итоги
                     fetch(`/project/{{ project.id }}/get_totals`)
                         .then(res => res.json())
                         .then(totals => {
-                            document.getElementById('total_income').innerText = totals.total_income + ' руб';
-                            document.getElementById('total_expenses').innerText = totals.total_expenses + ' руб';
-                            const profitElem = document.getElementById('profit');
-                            profitElem.innerText = '💵 ' + totals.profit + ' руб';
+                            document.getElementById('total_income').innerText = totals.total_income.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
+                            document.getElementById('profit').innerText = '💵 ' + totals.profit.toLocaleString('ru-RU').replace(/,/g, ' ') + ' руб';
                         });
                 }
             });
-        });
+        }
     });
 </script>
 
 <script>
-    // Цвет прогресса
     document.querySelectorAll('.progress-circle').forEach(el => {
         const progress = parseInt(el.style.getPropertyValue('--progress'));
         let color = '#198754';
@@ -502,7 +512,6 @@
         el.style.setProperty('--progress-color', color);
     });
 
-    // Динамическая загрузка продуктов по категории
     const categorySelect = document.getElementById('categorySelect');
     const productSelect = document.getElementById('productSelect');
     const addFromTemplateBtn = document.getElementById('addFromTemplateBtn');
@@ -516,7 +525,7 @@
                     .then(products => {
                         productSelect.innerHTML = '<option value="">Выберите продукт</option>';
                         products.forEach(product => {
-                            productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price} руб)</option>`;
+                            productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price.toLocaleString('ru-RU').replace(/,/g, ' ')} руб)</option>`;
                         });
                         productSelect.disabled = false;
                     });
