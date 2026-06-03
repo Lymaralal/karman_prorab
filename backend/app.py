@@ -312,17 +312,26 @@ def delete_project(id):
 def project_detail(project_id):
     project = Project.query.get_or_404(project_id)
     progress = calculate_progress(project)
+    works = ProjectWork.query.filter_by(project_id=project_id).all()
+    expenses = Expense.query.filter_by(project_id=project_id).all()
+    
+    total = sum(w.total_price for w in works)
+    total_expenses = sum(e.amount for e in expenses)
+    profit = total - total_expenses
+    
     return render_template('project_detail.html',
                          project=project,
                          services=Service.query.all(),
                          categories=ProductCategory.query.all(),
-                         works=ProjectWork.query.filter_by(project_id=project_id).all(),
-                         expenses=Expense.query.filter_by(project_id=project_id).all(),
+                         works=works,
+                         expenses=expenses,
                          purchases=Purchase.query.filter_by(project_id=project_id).all(),
                          timeline=ProjectTimeline.query.filter_by(project_id=project_id).first(),
                          progress=progress,
                          progress_color=get_progress_color(progress),
-                         total=sum(w.total_price for w in ProjectWork.query.filter_by(project_id=project_id).all()))
+                         total=total,
+                         total_expenses=total_expenses,
+                         profit=profit)
 
 @app.route('/project/<int:project_id>/save_all', methods=['POST'])
 def save_all(project_id):
