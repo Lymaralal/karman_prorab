@@ -4,14 +4,20 @@ from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from weasyprint import HTML
 
+# конфигурация
 app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///karman_prorab.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# миграции
+migrate = Migrate(app, db)
+
+# константы
 PROJECT_STATUSES = ['На этапе согласования', 'В работе', 'Завершённые', 'Отложенные']
 
 
@@ -109,7 +115,7 @@ class Setting(db.Model):
         db.session.commit()
 
 
-# вспомогательные функции 
+# вспомогательные функции
 
 def calculate_progress(project):
     timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
@@ -145,7 +151,12 @@ def get_progress_color(progress):
     return '#198754'
 
 
-# маршруты: услуги 
+# маршруты
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 
 @app.route('/services')
 def services():
@@ -185,8 +196,6 @@ def delete_service(id):
     return redirect(url_for('services'))
 
 
-# маршруты: категории
-
 @app.route('/categories')
 def categories():
     return render_template('categories.html', categories=ProductCategory.query.all())
@@ -218,8 +227,6 @@ def delete_category(id):
     db.session.commit()
     return redirect(url_for('categories'))
 
-
-# маршруты: продукты 
 
 @app.route('/products')
 def products():
@@ -269,13 +276,6 @@ def delete_product(id):
     db.session.delete(Product.query.get_or_404(id))
     db.session.commit()
     return redirect(url_for('products'))
-
-
-# маршруты: проекты
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 
 @app.route('/projects')
@@ -497,7 +497,7 @@ def delete_purchase(project_id, purchase_id):
     return redirect(url_for('project_detail', project_id=project_id, tab='estimate'))
 
 
-# маршруты: настройки 
+# настройки 
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -515,7 +515,7 @@ def settings():
                          company_inn=Setting.get('company_inn', ''))
 
 
-#  PDF генерация
+# PDF генерация
 
 @app.route('/project/<int:project_id>/estimate/pdf')
 def project_estimate_pdf(project_id):
