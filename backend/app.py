@@ -71,6 +71,7 @@ class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
     is_purchased = db.Column(db.Boolean, default=False)
     project = db.relationship('Project', backref='purchases')
 
@@ -111,7 +112,7 @@ class Setting(db.Model):
         db.session.commit()
 
 
-# вспомогательные функции 
+#вспомогательный функции 
 
 def calculate_progress(project):
     timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
@@ -511,7 +512,7 @@ def settings():
                          company_inn=Setting.get('company_inn', ''))
 
 
-#  PDF генерация 
+# PDF генерация 
 
 @app.route('/project/<int:project_id>/estimate/pdf')
 def project_estimate_pdf(project_id):
@@ -547,6 +548,160 @@ def project_estimate_pdf(project_id):
         tmp_path = tmp.name
     
     return send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf')
+
+
+# AJAX маршруты для автосохранения 
+
+@app.route('/project/<int:project_id>/autosave', methods=['POST'])
+def autosave(project_id):
+    """Универсальное автосохранение любого поля проекта"""
+    try:
+        data = request.get_json()
+        field = data.get('field')
+        value = data.get('value')
+        
+        project = Project.query.get_or_404(project_id)
+        
+        # поля из вкладки "Основное"
+        if field == 'name':
+            project.name = value
+        elif field == 'address':
+            project.address = value
+        elif field == 'status':
+            project.status = value
+        elif field == 'client_name':
+            project.client_name = value
+        elif field == 'client_phone':
+            project.client_phone = value
+        elif field == 'actual_end_date':
+            project.actual_end_date = value
+            
+        # даты из Timeline
+        elif field == 'start_date':
+            timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+            if not timeline:
+                timeline = ProjectTimeline(project_id=project.id)
+                db.session.add(timeline)
+            timeline.start_date = value
+        elif field == 'end_date':
+            timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+            if not timeline:
+                timeline = ProjectTimeline(project_id=project.id)
+                db.session.add(timeline)
+            timeline.end_date = value
+            
+        # количество работы в смете
+        elif field.startswith('work_qty_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work:
+                work.quantity = float(value)
+                work.total_price = work.service.price * work.quantity
+                
+        # название расхода
+        elif field.startswith('expense_name_'):
+            expense_id = int(field.split('_')[-1])
+            expense = Expense.query.get(expense_id)
+            if expense:
+                expense.name = value
+                
+        # сумма расхода
+        elif field.startswith('expense_amount_'):
+            expense_id = int(field.split('_')[-1])
+            expense = Expense.query.get(expense_id)
+            if expense:
+                expense.amount = float(value)
+                
+        # статус покупки
+        elif field.startswith('purchased_'):
+            purchase_id = int(field.split('_')[-1])
+            purchase = Purchase.query.get(purchase_id)
+            if purchase:
+                purchase.is_purchased = value == 'true' or value is True
+                
+        # количество покупки
+        elif field.startswith('purchase_quantity_'):
+            purchase_id = int(field.split('_')[-1])
+            purchase = Purchase.query.get(purchase_id)
+            if purchase:
+                purchase.quantity = int(value)
+                
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Сохранено'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/project/<int:project_id>/add_expense_ajax', methods=['POST'])
+def add_expense_ajax(project_id):
+    """Добавление расхода без перезагрузки страницы"""
+    try:
+        data = request.get_json()
+        expense = Expense(
+            project_id=project_id,
+            name=data.get('name'),
+            amount=float(data.get('amount'))
+        )
+        db.session.add(expense)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'expense_id': expense.id,
+            'name': expense.name,
+            'amount': expense.amount
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/project/<int:project_id>/add_purchase_ajax', methods=['POST'])
+def add_purchase_ajax(project_id):
+    """Добавление покупки без перезагрузки страницы"""
+    try:
+        data = request.get_json()
+        purchase = Purchase(
+            project_id=project_id,
+            name=data.get('name'),
+            quantity=data.get('quantity', 1)
+        )
+        db.session.add(purchase)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'purchase_id': purchase.id,
+            'name': purchase.name,
+            'quantity': purchase.quantity
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/project/<int:project_id>/delete_expense_ajax/<int:expense_id>', methods=['DELETE'])
+def delete_expense_ajax(project_id, expense_id):
+    """Удаление расхода без перезагрузки страницы"""
+    try:
+        expense = Expense.query.get_or_404(expense_id)
+        db.session.delete(expense)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/project/<int:project_id>/delete_purchase_ajax/<int:purchase_id>', methods=['DELETE'])
+def delete_purchase_ajax(project_id, purchase_id):
+    """Удаление покупки без перезагрузки страницы"""
+    try:
+        purchase = Purchase.query.get_or_404(purchase_id)
+        db.session.delete(purchase)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
 
 
 # создание таблиц при запуске
