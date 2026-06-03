@@ -4,7 +4,6 @@ from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from weasyprint import HTML
 
 # конфигурация
@@ -13,9 +12,6 @@ app = Flask(__name__, template_folder='../frontend/templates', static_folder='..
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///karman_prorab.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
-# миграции
-migrate = Migrate(app, db)
 
 # константы
 PROJECT_STATUSES = ['На этапе согласования', 'В работе', 'Завершённые', 'Отложенные']
@@ -26,7 +22,7 @@ def inject_globals():
     return {'project_statuses': PROJECT_STATUSES}
 
 
-# модели
+# модели 
 
 class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -115,7 +111,7 @@ class Setting(db.Model):
         db.session.commit()
 
 
-# вспомогательные функции
+# вспомогательные функции 
 
 def calculate_progress(project):
     timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
@@ -151,7 +147,7 @@ def get_progress_color(progress):
     return '#198754'
 
 
-# маршруты
+# маршруты 
 
 @app.route('/')
 def index():
@@ -515,7 +511,7 @@ def settings():
                          company_inn=Setting.get('company_inn', ''))
 
 
-# PDF генерация
+#  PDF генерация 
 
 @app.route('/project/<int:project_id>/estimate/pdf')
 def project_estimate_pdf(project_id):
@@ -553,10 +549,11 @@ def project_estimate_pdf(project_id):
     return send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf')
 
 
+# создание таблиц при запуске
+with app.app_context():
+    db.create_all()
+
+
 # запуск
 if __name__ == '__main__':
-    with app.app_context():
-        from flask_migrate import upgrade
-        upgrade()  # выполняет все ожидающие миграции
-        db.create_all()  # создаёт недостающие таблицы
     app.run(debug=True)
