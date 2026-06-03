@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать категорию{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">✏️ Редактировать категорию</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Название категории</label>
+                <input type="text" name="name" value="{{ category.name }}" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Сохранить</button>
+            <a href="/categories" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

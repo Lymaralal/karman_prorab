@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки компании{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">⚙️ Настройки компании</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Название компании / ИП</label>
+                <input type="text" name="company_name" class="form-control" 
+                       value="{{ company_name }}" placeholder="ИП Смирнов | Строительство">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Телефон</label>
+                <input type="text" name="company_phone" class="form-control" 
+                       value="{{ company_phone }}" placeholder="8(XXX)XXX-XX-XX">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="company_email" class="form-control" 
+                       value="{{ company_email }}" placeholder="info@example.com">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">ИНН (опционально)</label>
+                <input type="text" name="company_inn" class="form-control" 
+                       value="{{ company_inn }}" placeholder="1234567890">
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Сохранить настройки</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

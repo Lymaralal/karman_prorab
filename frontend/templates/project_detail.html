@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Кнопки действий -->
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <a href="/project/{{ project.id }}/estimate/pdf" class="btn btn-danger" target="_blank">
+        📄 Скачать смету PDF
+    </a>
+    <button type="submit" form="mainForm" class="btn btn-success">💾 Сохранить все изменения</button>
+</div>
+
+<!-- Форма, которая объединяет всё -->
+<form id="mainForm" method="POST" action="/project/{{ project.id }}/save_all">
+    
+    <!-- Скрытое поле для запоминания активной вкладки -->
+    <input type="hidden" name="active_tab" id="active_tab" value="main">
+
+    <!-- Вкладки -->
+    <ul class="nav nav-tabs mb-3" id="projectTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main" type="button" role="tab" onclick="setActiveTab('main')">📋 Основное</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="estimate-tab" data-bs-toggle="tab" data-bs-target="#estimate" type="button" role="tab" onclick="setActiveTab('estimate')">📊 Смета</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab" onclick="setActiveTab('files')">📎 Файлы</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab" onclick="setActiveTab('photos')">📸 Фото</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        
+        <!-- ========== ВКЛАДКА "ОСНОВНОЕ" ========== -->
+        <div class="tab-pane fade show active" id="main" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📋 Редактирование проекта</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название объекта:</label>
+                        <input type="text" name="name" value="{{ project.name }}" class="form-control" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">📍 Адрес:</label>
+                            <input type="text" name="address" value="{{ project.address or '' }}" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">📌 Статус:</label>
+                            <select name="status" class="form-select">
+                                <option value="На этапе согласования" {% if project.status == 'На этапе согласования' %}selected{% endif %}>На этапе согласования</option>
+                                <option value="В работе" {% if project.status == 'В работе' %}selected{% endif %}>В работе</option>
+                                <option value="Завершённые" {% if project.status == 'Завершённые' %}selected{% endif %}>Завершённые</option>
+                                <option value="Отложенные" {% if project.status == 'Отложенные' %}selected{% endif %}>Отложенные</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">👤 ФИО заказчика:</label>
+                            <input type="text" name="client_name" value="{{ project.client_name or '' }}" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">📞 Телефон заказчика:</label>
+                            <input type="text" name="client_phone" value="{{ project.client_phone or '' }}" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">📅 Дата начала:</label>
+                            <input type="date" name="start_date" value="{{ timeline.start_date if timeline else '' }}" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">⏳ Плановая дата окончания:</label>
+                            <input type="date" name="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">✅ Фактическая дата окончания:</label>
+                            <input type="date" name="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control">
+                        </div>
+                    </div>
+                    {% if timeline and timeline.start_date and timeline.end_date %}
+                    <div class="text-center mt-4">
+                        <label class="form-label fw-bold">📈 Прогресс выполнения</label>
+                        <div class="progress-circle mx-auto" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
+                            <span class="progress-text">{{ progress }}%</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== ВКЛАДКА "СМЕТА" ========== -->
+        <div class="tab-pane fade" id="estimate" role="tabpanel">
+            
+            <!-- Быстрое добавление услуги (старый способ) -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">⚡ Быстрое добавление услуги</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <select name="new_service_id" class="form-select">
+                                <option value="">Выберите услугу</option>
+                                {% for service in services %}
+                                <option value="{{ service.id }}">{{ service.name }} ({{ service.unit }} — {{ service.price }} руб)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" step="0.01" name="new_quantity" class="form-control" placeholder="Количество">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" name="add_work" value="1" class="btn btn-success w-100">➕ Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Добавление из шаблона (категория → продукт) -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📦 Добавить из шаблона</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <select id="categorySelect" class="form-select">
+                                <option value="">Выберите категорию</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <select id="productSelect" name="product_id" class="form-select" disabled>
+                                <option value="">Сначала выберите категорию</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" id="addFromTemplateBtn" class="btn btn-info w-100" disabled>➕ Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Список работ в смете -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">💰 Смета работ (доход)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Работа</th>
+                                    <th>Количество</th>
+                                    <th>Цена за ед.</th>
+                                    <th>Сумма</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for work in works %}
+                                <tr>
+                                    <td>{{ work.service.name }}</td>
+                                    <td><input type="number" step="0.01" name="work_qty_{{ work.id }}" value="{{ work.quantity }}" class="form-control form-control-sm" style="width: 120px;"> {{ work.service.unit }}</td>
+                                    <td>{{ work.service.price }} руб</td>
+                                    <td>{{ work.total_price }} руб</td>
+                                    <td><a href="/project/{{ project.id }}/delete_work/{{ work.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить работу?')">✖️</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>💰 Доход по смете: {{ total }} руб</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Расходы -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">📉 Расходы по проекту</h5>
+                </div>
+                <div class="card-body">
+                    {% for expense in expenses %}
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-md-5">
+                            <input type="text" name="expense_name_{{ expense.id }}" value="{{ expense.name }}" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" step="0.01" name="expense_amount_{{ expense.id }}" value="{{ expense.amount }}" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/project/{{ project.id }}/delete_expense/{{ expense.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить расход?')">✖️</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <hr>
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-5">
+                            <input type="text" name="new_expense_name" class="form-control" placeholder="Новый расход">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" step="0.01" name="new_expense_amount" class="form-control" placeholder="Сумма">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" name="add_expense" value="1" class="btn btn-danger w-100">➕ Добавить расход</button>
+                        </div>
+                    </div>
+                    {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
+                    <div class="alert alert-danger mt-3">
+                        <strong>📉 Всего расходов: {{ total_expenses }} руб</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Список покупок -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🛒 Список покупок</h5>
+                </div>
+                <div class="card-body">
+                    {% for purchase in purchases %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="purchased_{{ purchase.id }}" id="purchased_{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}>
+                        <label class="form-check-label {% if purchase.is_purchased %}text-decoration-line-through text-muted{% endif %}" for="purchased_{{ purchase.id }}">
+                            {{ purchase.name }}
+                        </label>
+                        <a href="/project/{{ project.id }}/delete_purchase/{{ purchase.id }}" class="btn btn-sm btn-outline-danger float-end" onclick="return confirm('Удалить покупку?')">✖️</a>
+                    </div>
+                    {% endfor %}
+                    <hr>
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-8">
+                            <input type="text" name="new_purchase_name" class="form-control" placeholder="Что нужно купить?">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" name="add_purchase" value="1" class="btn btn-info w-100">➕ Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Прибыль -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">💸 Итоговая прибыль</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% set total_expenses = expenses | sum(attribute='amount') if expenses else 0 %}
+                    {% set profit = total - total_expenses %}
+                    <h2 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                        💵 {{ profit }} руб
+                    </h2>
+                    <p class="text-muted">Доход (💰 {{ total }} руб) — Расходы (📉 {{ total_expenses }} руб)</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== ВКЛАДКА "ФАЙЛЫ" (заглушка) ========== -->
+        <div class="tab-pane fade" id="files" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📎 Файлы проекта</h5>
+                </div>
+                <div class="card-body text-center text-muted">
+                    <p class="mt-3">📙 Здесь можно будет загружать договоры, сметы, документы.</p>
+                    <p>Функция в разработке 🚧</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== ВКЛАДКА "ФОТО" (заглушка) ========== -->
+        <div class="tab-pane fade" id="photos" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📸 Готовый объект</h5>
+                </div>
+                <div class="card-body text-center text-muted">
+                    <p class="mt-3">🖼️ Здесь можно будет добавить фото готового объекта.</p>
+                    <p>Функция в разработке 🚧</p>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+</form>
+
+<style>
+    .progress-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        background: conic-gradient(var(--progress-color) 0deg, var(--progress-color) calc(var(--progress) * 3.6deg), #e9ecef calc(var(--progress) * 3.6deg), #e9ecef 360deg);
+    }
+    .progress-circle::before {
+        content: "";
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 50%;
+    }
+    .progress-text {
+        position: relative;
+        font-size: 24px;
+        font-weight: bold;
+        z-index: 1;
+    }
+</style>
+
+<script>
+    // Запоминаем активную вкладку
+    function setActiveTab(tabId) {
+        document.getElementById('active_tab').value = tabId;
+    }
+    
+    // Открываем нужную вкладку из GET-параметра tab
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab && tab !== 'main') {
+            const tabButton = document.querySelector(`button[data-bs-target="#${tab}"]`);
+            if (tabButton) {
+                const bsTab = new bootstrap.Tab(tabButton);
+                bsTab.show();
+            }
+        }
+    });
+</script>
+
+<script>
+    // Цвет прогресса
+    document.querySelectorAll('.progress-circle').forEach(el => {
+        const progress = parseInt(el.style.getPropertyValue('--progress'));
+        let color = '#198754';
+        if (progress < 30) color = '#dc3545';
+        else if (progress < 50) color = '#fd7e14';
+        else if (progress < 70) color = '#ffc107';
+        else if (progress < 90) color = '#20c997';
+        else color = '#198754';
+        el.style.setProperty('--progress-color', color);
+    });
+
+    // Динамическая загрузка продуктов по категории
+    const categorySelect = document.getElementById('categorySelect');
+    const productSelect = document.getElementById('productSelect');
+    const addFromTemplateBtn = document.getElementById('addFromTemplateBtn');
+
+    categorySelect.addEventListener('change', function() {
+        const categoryId = this.value;
+        if (categoryId) {
+            fetch(`/products/by-category/${categoryId}`)
+                .then(response => response.json())
+                .then(products => {
+                    productSelect.innerHTML = '<option value="">Выберите продукт</option>';
+                    products.forEach(product => {
+                        productSelect.innerHTML += `<option value="${product.id}" data-unit="${product.unit}" data-price="${product.price}">${product.name} (${product.unit} — ${product.price} руб)</option>`;
+                    });
+                    productSelect.disabled = false;
+                });
+        } else {
+            productSelect.innerHTML = '<option value="">Сначала выберите категорию</option>';
+            productSelect.disabled = true;
+            addFromTemplateBtn.disabled = true;
+        }
+    });
+
+    productSelect.addEventListener('change', function() {
+        addFromTemplateBtn.disabled = !this.value;
+    });
+
+    addFromTemplateBtn.addEventListener('click', function() {
+        const productId = productSelect.value;
+        const productUnit = productSelect.options[productSelect.selectedIndex]?.getAttribute('data-unit');
+        
+        if (productId) {
+            const quantity = prompt(`Введите количество (${productUnit}):`, "1");
+            if (quantity && !isNaN(quantity) && parseFloat(quantity) > 0) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/project/{{ project.id }}/add_product_work`;
+                
+                const productIdInput = document.createElement('input');
+                productIdInput.type = 'hidden';
+                productIdInput.name = 'product_id';
+                productIdInput.value = productId;
+                form.appendChild(productIdInput);
+                
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'hidden';
+                quantityInput.name = 'quantity';
+                quantityInput.value = quantity;
+                form.appendChild(quantityInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                alert('Пожалуйста, введите корректное количество');
+            }
+        }
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить проект{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">➕ Новый объект</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">Название объекта</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="Сашенька" required>
+            </div>
+            <div class="mb-3">
+                <label for="address" class="form-label">Адрес</label>
+                <input type="text" class="form-control" id="address" name="address" placeholder="ул. Харьковская, 68">
+            </div>
+            <div class="mb-3">
+                <label for="client_name" class="form-label">ФИО заказчика</label>
+                <input type="text" class="form-control" id="client_name" name="client_name" placeholder="Сашенька Лимар">
+            </div>
+            <div class="mb-3">
+                <label for="client_phone" class="form-label">Телефон заказчика</label>
+                <input type="text" class="form-control" id="client_phone" name="client_phone" placeholder="89088779327">
+            </div>
+            <div class="mb-3">
+                <label for="status" class="form-label">Статус</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="На этапе согласования">На этапе согласования</option>
+                    <option value="В работе" selected>В работе</option>
+                    <option value="Завершённые">Завершённые</option>
+                    <option value="Отложенные">Отложенные</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Сохранить</button>
+            <a href="/projects" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

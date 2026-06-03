@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить услугу{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white">
+        <h4 class="mb-0">➕ Новая услуга</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">Название услуги</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="Например: Укладка плитки" required>
+            </div>
+            <div class="mb-3">
+                <label for="unit" class="form-label">Единица измерения</label>
+                <select class="form-select" id="unit" name="unit" required>
+                    <option value="м²">м² (квадратный метр)</option>
+                    <option value="м³">м³ (метр кубический)</option>
+                    <option value="шт">шт (штука)</option>
+                    <option value="м.п">м.п (погонный метр)</option>
+                    <option value="ед">ед (единица)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="price" class="form-label">Цена за единицу (руб)</label>
+                <input type="number" class="form-control" id="price" name="price" step="0.01" placeholder="2000" required>
+            </div>
+            <button type="submit" class="btn btn-success">💾 Сохранить</button>
+            <a href="/services" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать услугу{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">✏️ Редактировать услугу</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">Название услуги</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ service.name }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="unit" class="form-label">Единица измерения</label>
+                <select class="form-select" id="unit" name="unit" required>
+                    <option value="м²" {% if service.unit == 'м²' %}selected{% endif %}>м² (квадратный метр)</option>
+                    <option value="м³" {% if service.unit == 'м³' %}selected{% endif %}>м³ (метр кубический)</option>
+                    <option value="шт" {% if service.unit == 'шт' %}selected{% endif %}>шт (штука)</option>
+                    <option value="м.п" {% if service.unit == 'м.п' %}selected{% endif %}>м.п (погонный метр)</option>
+                    <option value="ед" {% if service.unit == 'ед' %}selected{% endif %}>ед (единица)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="price" class="form-label">Цена за единицу (руб)</label>
+                <input type="number" class="form-control" id="price" name="price" step="0.01" value="{{ service.price }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Сохранить изменения</button>
+            <a href="/services" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

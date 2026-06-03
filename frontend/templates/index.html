@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white text-center">
+        <h4 class="mb-0">Добро пожаловать!</h4>
+    </div>
+    <div class="card-body text-center">
+        <div class="row">
+            <div class="col-6 mb-3">
+                <a href="/projects" class="btn btn-primary w-100 py-4" style="font-size: 1.2rem;">
+                    <i class="bi bi-briefcase d-block fs-1 mb-2"></i>
+                    Мои проекты
+                </a>
+            </div>
+            <div class="col-6 mb-3">
+                <a href="/services" class="btn btn-success w-100 py-4" style="font-size: 1.2rem;">
+                    <i class="bi bi-tools d-block fs-1 mb-2"></i>
+                    Мои услуги
+                </a>
+            </div>
+            <div class="col-6 mb-3">
+                <a href="/categories" class="btn btn-info w-100 py-4" style="font-size: 1.2rem;">
+                    <i class="bi bi-tags d-block fs-1 mb-2"></i>
+                    Категории
+                </a>
+            </div>
+            <div class="col-6 mb-3">
+                <a href="/products" class="btn btn-warning w-100 py-4" style="font-size: 1.2rem;">
+                    <i class="bi bi-box d-block fs-1 mb-2"></i>
+                    Продукты
+                </a>
+            </div>
+        </div>
+        <div class="mt-2">
+            <a href="/settings" class="btn btn-secondary w-100 py-2">
+                <i class="bi bi-gear"></i> Настройки
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

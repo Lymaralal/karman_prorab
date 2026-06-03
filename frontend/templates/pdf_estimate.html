@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Смета - {{ project.name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DejaVu Sans', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 24pt;
+            margin-bottom: 5px;
+        }
+        
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 10pt;
+        }
+        
+        .contacts {
+            margin-bottom: 20px;
+            font-size: 9pt;
+            color: #555;
+        }
+        
+        .client-info {
+            background: #f5f5f5;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2c3e50;
+        }
+        
+        .client-info h3 {
+            font-size: 12pt;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .client-info p {
+            margin: 3px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .total-row {
+            background: #ecf0f1;
+            font-weight: bold;
+        }
+        
+        .total-row td {
+            border-top: 2px solid #2c3e50;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 9pt;
+            text-align: center;
+            color: #7f8c8d;
+        }
+        
+        .signature {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature div {
+            width: 45%;
+        }
+        
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 30px;
+            padding-top: 5px;
+        }
+        
+        .project-details {
+            font-size: 9pt;
+            margin-bottom: 15px;
+        }
+        
+        .profit-box {
+            background: #27ae60;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🧰 КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</h1>
+    <div class="subtitle">{{ company_name }}</div>
+</div>
+
+<div class="contacts">
+    <strong>Телефон:</strong> {{ company_phone }} &nbsp;|&nbsp;
+    <strong>Email:</strong> {{ company_email }}
+    {% if company_inn %} &nbsp;|&nbsp; <strong>ИНН:</strong> {{ company_inn }}{% endif %}
+</div>
+
+<div class="client-info">
+    <h3>📋 Объект: {{ project.name }}</h3>
+    <p><strong>📍 Адрес:</strong> {{ project.address or 'Не указан' }}</p>
+    <p><strong>👤 Заказчик:</strong> {{ project.client_name or 'Не указан' }} &nbsp;|&nbsp;
+    <strong>📞 Телефон:</strong> {{ project.client_phone or 'Не указан' }}</p>
+    {% if timeline %}
+    <p><strong>📅 Сроки:</strong> {{ timeline.start_date or '—' }} → {{ timeline.end_date or '—' }}</p>
+    {% endif %}
+</div>
+
+<h3>💰 СМЕТА РАБОТ</h3>
+
+{% if works %}
+<table>
+    <thead>
+        <tr>
+            <th style="width: 5%;">№</th>
+            <th style="width: 50%;">Наименование работ</th>
+            <th style="width: 10%;">Ед.изм</th>
+            <th style="width: 10%;">Кол-во</th>
+            <th style="width: 10%;">Цена</th>
+            <th style="width: 15%;">Стоимость</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for work in works %}
+        <tr>
+            <td class="text-right">{{ work.num }}</td>
+            <td>{{ work.name }}</td>
+            <td>{{ work.unit }}</td>
+            <td class="text-right">{{ "%.2f"|format(work.quantity) }}</td>
+            <td class="text-right">{{ "%.2f"|format(work.price) }} ₽</td>
+            <td class="text-right">{{ "%.2f"|format(work.total) }} ₽</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+            <td colspan="5" class="text-right"><strong>ИТОГО:</strong></td>
+            <td class="text-right"><strong>{{ "%.2f"|format(total_income) }} ₽</strong></td>
+        </tr>
+    </tbody>
+</table>
+{% else %}
+<p style="color: #999;">Работы не добавлены</p>
+{% endif %}
+
+<div class="profit-box">
+    <strong>💰 ИТОГОВАЯ СУММА: {{ "%.2f"|format(total_income) }} ₽</strong>
+</div>
+
+<div class="project-details">
+    <p><strong>📌 Комментарий:</strong> В смету включены все материалы, работы и доставка. Цены действительны в течение 30 дней.</p>
+</div>
+
+<div class="signature">
+    <div>
+        <div class="signature-line"></div>
+        <p>Подпись заказчика</p>
+    </div>
+    <div>
+        <div class="signature-line"></div>
+        <p>Подпись исполнителя</p>
+    </div>
+</div>
+
+<div class="footer">
+    Документ сформирован автоматически
+</div>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить продукт{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white">
+        <h4 class="mb-0">➕ Новый продукт</h4>
+    </div>
+    <div class="card-body">
+        {% if categories %}
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Категория</label>
+                <select name="category_id" class="form-select" required>
+                    <option value="">Выберите категорию</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.args.get('category_id')|int == category.id %}selected{% endif %}>
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if request.args.get('category_id') %}
+                <small class="text-muted">Добавление продукта в выбранную категорию</small>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Название продукта</label>
+                <input type="text" name="name" class="form-control" placeholder="Например: Укладка плитки" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Единица измерения</label>
+                <select name="unit" class="form-select" required>
+                    <option value="м²">м² (квадратный метр)</option>
+                    <option value="м³">м³ (метр кубический)</option>
+                    <option value="шт">шт (штука)</option>
+                    <option value="м.п">м.п (погонный метр)</option>
+                    <option value="ед">ед (единица)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Цена (руб)</label>
+                <input type="number" step="0.01" name="price" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Описание (необязательно)</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Дополнительная информация о продукте"></textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">💾 Сохранить и выйти</button>
+                <button type="submit" name="add_another" value="1" class="btn btn-outline-success">➕ Сохранить и добавить ещё</button>
+                <a href="/products" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Сначала создайте категорию, чтобы добавить продукт.
+            <a href="/categories/add" class="alert-link">Создать категорию</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
