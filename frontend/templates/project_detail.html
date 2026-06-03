@@ -72,18 +72,20 @@
                             <input type="text" name="client_phone" value="{{ project.client_phone or '' }}" class="form-control">
                         </div>
                     </div>
+                    
+                    <!-- Поля дат (текстовые, с поддержкой разных форматов) -->
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">📅 Дата начала:</label>
-                            <input type="date" name="start_date" id="start_date" value="{{ timeline.start_date if timeline else '' }}" class="form-control">
+                            <input type="text" name="start_date" id="start_date" value="{{ timeline.start_date if timeline else '' }}" class="form-control" placeholder="ГГГГ-ММ-ДД или ДД.ММ.ГГГГ">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">⏳ Плановая дата окончания:</label>
-                            <input type="date" name="end_date" id="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control">
+                            <input type="text" name="end_date" id="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control" placeholder="ГГГГ-ММ-ДД или ДД.ММ.ГГГГ">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">✅ Фактическая дата окончания:</label>
-                            <input type="date" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control">
+                            <input type="text" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control" placeholder="ГГГГ-ММ-ДД или ДД.ММ.ГГГГ">
                         </div>
                     </div>
                     
@@ -357,32 +359,72 @@
         block.style.display = block.style.display === 'none' ? 'block' : 'none';
     }
 
-    // Автосохранение дат с перезагрузкой
-    document.getElementById('start_date')?.addEventListener('change', function() {
-        const value = this.value;
-        fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field: 'start_date', value: value })
-        }).then(() => location.reload());
+    // Нормализация даты (любой формат → ГГГГ-ММ-ДД)
+    function normalizeDate(dateStr) {
+        if (!dateStr) return '';
+        
+        let str = dateStr.trim();
+        
+        // Уже в правильном формате YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        
+        // Заменяем разделители / или . на -
+        let normalized = str.replace(/[\/\.]/g, '-');
+        let parts = normalized.split('-');
+        
+        if (parts.length === 3) {
+            // Если первый элемент — год (4 цифры), оставляем как есть
+            if (parts[0].length === 4) {
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            // Иначе считаем, что это ДД-ММ-ГГГГ
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        
+        return str;
+    }
+
+    // Автосохранение дат с нормализацией
+    document.getElementById('start_date')?.addEventListener('blur', function() {
+        let normalized = normalizeDate(this.value);
+        if (normalized !== this.value) {
+            this.value = normalized;
+        }
+        if (normalized && normalized !== '{{ timeline.start_date if timeline else '' }}') {
+            fetch(`/project/{{ project.id }}/autosave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: 'start_date', value: normalized })
+            }).then(() => location.reload());
+        }
     });
 
-    document.getElementById('end_date')?.addEventListener('change', function() {
-        const value = this.value;
-        fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field: 'end_date', value: value })
-        }).then(() => location.reload());
+    document.getElementById('end_date')?.addEventListener('blur', function() {
+        let normalized = normalizeDate(this.value);
+        if (normalized !== this.value) {
+            this.value = normalized;
+        }
+        if (normalized && normalized !== '{{ timeline.end_date if timeline else '' }}') {
+            fetch(`/project/{{ project.id }}/autosave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: 'end_date', value: normalized })
+            }).then(() => location.reload());
+        }
     });
 
-    document.getElementById('actual_end_date')?.addEventListener('change', function() {
-        const value = this.value;
-        fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field: 'actual_end_date', value: value })
-        }).then(() => location.reload());
+    document.getElementById('actual_end_date')?.addEventListener('blur', function() {
+        let normalized = normalizeDate(this.value);
+        if (normalized !== this.value) {
+            this.value = normalized;
+        }
+        if (normalized && normalized !== '{{ project.actual_end_date or '' }}') {
+            fetch(`/project/{{ project.id }}/autosave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: 'actual_end_date', value: normalized })
+            }).then(() => location.reload());
+        }
     });
 
     // AJAX добавление услуги
