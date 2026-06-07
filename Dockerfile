@@ -2,6 +2,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+
 RUN apt-get update && apt-get install -y \
     curl \
     libpango-1.0-0 \
@@ -17,15 +18,19 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --upgrade pip
 
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 COPY . .
+
 
 ENV PORT=8000
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 
