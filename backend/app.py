@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import io
 import tempfile
@@ -14,21 +15,31 @@ from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# пути для TIMEWEB
+# отладочный вывод
+print("=== APP STARTING ===", flush=True)
 
+# пути для TIMEWEB 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Поднимаемся на уровень выше, где лежит папка frontend
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'templates')
 STATIC_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'static')
 
+print(f"BASE_DIR: {BASE_DIR}", flush=True)
+print(f"PROJECT_ROOT: {PROJECT_ROOT}", flush=True)
+print(f"TEMPLATE_DIR: {TEMPLATE_DIR}", flush=True)
+print(f"STATIC_DIR: {STATIC_DIR}", flush=True)
+
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///karman_prorab.db'
+# база данныз (временная папка) 
+DB_PATH = os.path.join(tempfile.gettempdir(), 'karman_prorab.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 
-# настройки загрузки файлов
+print(f"Database path: {DB_PATH}", flush=True)
+
+# загрузка файлов
 UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads', 'receipts')
 UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads', 'project_photos')
 UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads', 'logo')
@@ -45,7 +56,7 @@ os.makedirs(UPLOAD_FOLDER_LOGO, exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# настройка LoginManager
+# LOGIN MANAGER
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -57,7 +68,7 @@ ESTIMATE_MODES = ['client_no_materials', 'client_with_materials', 'internal']
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# модели
+# модели 
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -199,7 +210,7 @@ class Setting(db.Model):
             db.session.add(setting)
         db.session.commit()
 
-# контекстные процессоры
+# контектсные процессоры
 
 @app.context_processor
 def inject_globals():
@@ -279,11 +290,13 @@ def get_progress_color(progress):
     if progress < 90: return '#20c997'
     return '#198754'
 
-# маршруты 
+# HEALTH CHECK
 
 @app.route('/health')
 def health():
     return 'OK', 200
+
+# маршруты 
 
 @app.route('/')
 def index():
@@ -1539,8 +1552,7 @@ def search_projects_api():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-with app.app_context():
-    db.create_all()
+print("=== APP INITIALIZED SUCCESSFULLY ===", flush=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
