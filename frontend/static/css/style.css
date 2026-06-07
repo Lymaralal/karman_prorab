@@ -1,0 +1,484 @@
+body {
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(46, 125, 50, 0.15);
+}
+
+.card-header {
+    font-weight: 600;
+    border: none;
+    padding: 16px 20px;
+}
+
+.card-header.bg-primary { background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%) !important; color: white; }
+.card-header.bg-success { background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%) !important; color: white; }
+.card-header.bg-danger { background: linear-gradient(135deg, #c62828 0%, #e53935 100%) !important; color: white; }
+.card-header.bg-info { background: linear-gradient(135deg, #00838F 0%, #0097A7 100%) !important; color: white; }
+.card-header.bg-dark { background: linear-gradient(135deg, #1B3B1A 0%, #2E7D32 100%) !important; color: white; }
+.card-header.bg-secondary { background: linear-gradient(135deg, #455A64 0%, #546E7A 100%) !important; color: white; }
+
+.card-body {
+    background: white;
+    padding: 20px;
+}
+
+.btn-primary, .btn-success {
+    background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
+    border: none;
+    border-radius: 50px;
+    padding: 10px 24px;
+    font-weight: 500;
+    transition: all 0.3s;
+    color: white;
+}
+
+.btn-primary:hover, .btn-success:hover {
+    background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 125, 50, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+    border: none;
+    border-radius: 50px;
+    transition: all 0.3s;
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+}
+
+.btn-outline-primary {
+    border-color: #4CAF50;
+    color: #2E7D32;
+    border-radius: 50px;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
+    border-color: transparent;
+    color: white;
+}
+
+.alert {
+    border-radius: 12px;
+    border: none;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #E8F5E9;
+    color: #1B5E20;
+}
+
+.alert-danger {
+    background: #FFEBEE;
+    color: #c62828;
+}
+
+.form-control, .form-select {
+    border-radius: 12px;
+    border: 1px solid #C8E6C9;
+    padding: 10px 16px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+}
+
+.modal-content {
+    border-radius: 20px;
+    border: none;
+}
+
+.modal-header {
+    border-radius: 20px 20px 0 0;
+    border: none;
+}
+
+.nav-tabs {
+    border-bottom: 2px solid #C8E6C9;
+}
+
+.nav-tabs .nav-link {
+    color: #4a5b4a;
+    font-weight: 500;
+    border: none;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #2E7D32;
+}
+
+.nav-tabs .nav-link.active {
+    color: #2E7D32;
+    font-weight: 600;
+    border-bottom: 3px solid #2E7D32;
+    background: transparent;
+}
+
+/* стили для таблиц */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+}
+.table th, .table td {
+    padding: 14px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+}
+.table th {
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* цветные шапки */
+.table-success th {
+    background-color: #d1e7dd !important;
+    color: #0a3622;
+}
+.table-danger th {
+    background-color: #f8d7da !important;
+    color: #842029;
+}
+.table-info th {
+    background-color: #cff4fc !important;
+    color: #055160;
+}
+
+/* Тело таблицы с лёгкой тонировкой */
+.table-success td {
+    background-color: #f0fdf4 !important;
+}
+.table-danger td {
+    background-color: #fff5f5 !important;
+}
+.table-info td {
+    background-color: #f0f9ff !important;
+}
+
+/* Чередование строк (более тёмные чётные) */
+.table-success tr:nth-child(even) td {
+    background-color: #e8f5e9 !important;
+}
+.table-danger tr:nth-child(even) td {
+    background-color: #ffecec !important;
+}
+.table-info tr:nth-child(even) td {
+    background-color: #e6f4ff !important;
+}
+
+/* эффект при наведении */
+tbody tr:hover td {
+    filter: brightness(0.97);
+}
+
+/* кнопки действий */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+.action-buttons .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.action-buttons .btn-outline-primary {
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+.action-buttons .btn-outline-primary:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+.action-buttons .btn-outline-danger {
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+.action-buttons .btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* кнопка "Чек" */
+.btn-outline-info {
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+.btn-outline-info:hover {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+/* прогресс-круг */
+.progress-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: conic-gradient(var(--progress-color) 0deg, var(--progress-color) calc(var(--progress) * 3.6deg), #e9ecef calc(var(--progress) * 3.6deg), #e9ecef 360deg);
+}
+.progress-circle::before {
+    content: "";
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 50%;
+}
+.progress-text {
+    position: relative;
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 1;
+}
+
+@media (max-width: 768px) {
+    .progress-circle {
+        width: 70px;
+        height: 70px;
+    }
+    .progress-circle::before {
+        width: 56px;
+        height: 56px;
+    }
+    .progress-text {
+        font-size: 16px;
+    }
+    .action-buttons .btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    .table th, .table td {
+        padding: 10px 8px;
+    }
+}
+
+/* темная тема */
+body.dark-theme {
+    background: #0a1f0a;
+}
+
+body.dark-theme .card,
+body.dark-theme .top-bar,
+body.dark-theme .modal-content,
+body.dark-theme .side-menu {
+    background: #0d2b0d;
+}
+
+body.dark-theme .card-header {
+    background: #0a1f0a !important;
+}
+
+body.dark-theme .card-body {
+    background: #0d2b0d;
+}
+
+body.dark-theme .table thead th {
+    background: #0a1f0a;
+    color: #a5d6a7;
+}
+
+body.dark-theme .table tbody td {
+    color: #e8f5e9;
+    border-bottom-color: #1a3a1a;
+}
+
+body.dark-theme .table tbody tr:hover td {
+    background: #1a3a1a;
+}
+
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+    background: #1a3a1a;
+    border-color: #2a5a2a;
+    color: #e8f5e9;
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
+    background: #1a4a1a;
+    color: #ffffff;
+}
+
+body.dark-theme .btn-outline-secondary {
+    color: #a5d6a7;
+    border-color: #2a5a2a;
+}
+
+body.dark-theme .btn-outline-secondary:hover {
+    background: #2a5a2a;
+    color: #ffffff;
+}
+
+body.dark-theme .text-muted {
+    color: #a5d6a7 !important;
+}
+
+body.dark-theme .text-dark {
+    color: #e8f5e9 !important;
+}
+
+body.dark-theme .alert-success {
+    background: #0a2a0a;
+    color: #a5d6a7;
+    border-color: #2a5a2a;
+}
+
+body.dark-theme .alert-danger {
+    background: #2a0a0a;
+    color: #ef9a9a;
+    border-color: #5a2a2a;
+}
+
+body.dark-theme .nav-tabs {
+    border-bottom-color: #2a5a2a;
+}
+
+body.dark-theme .nav-tabs .nav-link {
+    color: #a5d6a7;
+}
+
+body.dark-theme .nav-tabs .nav-link.active {
+    color: #c8e6c9;
+    border-bottom-color: #4caf50;
+}
+
+body.dark-theme .bg-light {
+    background: #0a2a0a !important;
+}
+
+body.dark-theme .border {
+    border-color: #2a5a2a !important;
+}
+
+body.dark-theme .progress {
+    background: #1a3a1a;
+}
+
+body.dark-theme .progress-bar {
+    background: #4caf50 !important;
+}
+
+body.dark-theme .btn-primary,
+body.dark-theme .btn-success {
+    background: linear-gradient(135deg, #1a5a1a 0%, #2a8a2a 100%);
+    color: #ffffff;
+}
+
+body.dark-theme .btn-primary:hover,
+body.dark-theme .btn-success:hover {
+    background: linear-gradient(135deg, #0a4a0a 0%, #1a7a1a 100%);
+}
+
+body.dark-theme .badge.bg-warning {
+    background: #8a6a1a !important;
+    color: #e8f5e9;
+}
+
+body.dark-theme .badge.bg-success {
+    background: #1a6a1a !important;
+    color: #e8f5e9;
+}
+
+body.dark-theme .badge.bg-secondary {
+    background: #2a4a2a !important;
+    color: #e8f5e9;
+}
+
+body.dark-theme .badge.bg-info {
+    background: #1a5a6a !important;
+    color: #e8f5e9;
+}
+
+body.dark-theme a:not(.btn) {
+    color: #a5d6a7;
+}
+
+body.dark-theme a:not(.btn):hover {
+    color: #c8e6c9;
+}
+
+body.dark-theme .dropdown-menu {
+    background: #0d2b0d;
+    border-color: #2a5a2a;
+}
+
+body.dark-theme .dropdown-item {
+    color: #e8f5e9;
+}
+
+body.dark-theme .dropdown-item:hover {
+    background: #1a3a1a;
+    color: #ffffff;
+}
+
+body.dark-theme .modal-header,
+body.dark-theme .modal-footer {
+    background: #0a1f0a;
+    border-color: #2a5a2a;
+}
+
+body.dark-theme .modal-body {
+    background: #0d2b0d;
+}
+
+/* тёмная тема для таблиц */
+body.dark-theme .table-success th,
+body.dark-theme .table-success td {
+    background-color: #0d2b0d !important;
+    color: #a5d6a7;
+}
+
+body.dark-theme .table-danger th,
+body.dark-theme .table-danger td {
+    background-color: #2a0a1a !important;
+    color: #ef9a9a;
+}
+
+body.dark-theme .table-info th,
+body.dark-theme .table-info td {
+    background-color: #0a2a2a !important;
+    color: #80cbc4;
+}
+
+body.dark-theme .table-bordered {
+    border-color: #2a5a2a;
+}

@@ -10,28 +10,36 @@
     <div class="card-body">
         <form method="POST">
             <div class="mb-3">
-                <label for="name" class="form-label">Название объекта</label>
-                <input type="text" class="form-control" id="name" name="name" placeholder="Сашенька" required>
+                <label class="form-label">Название объекта</label>
+                <input type="text" name="name" class="form-control" required>
             </div>
             <div class="mb-3">
-                <label for="address" class="form-label">Адрес</label>
-                <input type="text" class="form-control" id="address" name="address" placeholder="ул. Харьковская, 68">
+                <label class="form-label">Адрес</label>
+                <input type="text" name="address" class="form-control">
             </div>
             <div class="mb-3">
-                <label for="client_name" class="form-label">ФИО заказчика</label>
-                <input type="text" class="form-control" id="client_name" name="client_name" placeholder="Сашенька Лимар">
+                <label class="form-label">ФИО заказчика</label>
+                <input type="text" name="client_name" class="form-control">
             </div>
             <div class="mb-3">
-                <label for="client_phone" class="form-label">Телефон заказчика</label>
-                <input type="text" class="form-control" id="client_phone" name="client_phone" placeholder="89088779327">
+                <label class="form-label">Телефон заказчика</label>
+                <input type="text" name="client_phone" class="form-control">
             </div>
             <div class="mb-3">
-                <label for="status" class="form-label">Статус</label>
-                <select class="form-select" id="status" name="status">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select">
                     <option value="На этапе согласования">На этапе согласования</option>
                     <option value="В работе" selected>В работе</option>
                     <option value="Завершённые">Завершённые</option>
                     <option value="Отложенные">Отложенные</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Режим сметы</label>
+                <select name="estimate_mode" class="form-select">
+                    <option value="client_no_materials">Для клиента (без материалов)</option>
+                    <option value="client_with_materials">Для клиента (под ключ)</option>
+                    <option value="internal">Для себя (внутренняя)</option>
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">💾 Сохранить</button>

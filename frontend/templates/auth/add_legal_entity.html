@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Добавление юр. лица - Карманный Прораб{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-lg border-0 rounded-4 mt-4 mb-4">
+            <div class="card-header bg-info text-white text-center rounded-top-4 border-0 py-3">
+                <h3 class="mb-0">
+                    <i class="bi bi-building"></i> Добавление юр. лица
+                </h3>
+                <p class="mb-0 mt-2 small">Добавьте информацию о вашей компании</p>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Тип юр. лица</label>
+                        <select name="entity_type" id="entity_type" class="form-select form-select-lg" required>
+                            <option value="">Выберите тип</option>
+                            <option value="ip">Индивидуальный предприниматель (ИП)</option>
+                            <option value="ooo">Общество с ограниченной ответственностью (ООО)</option>
+                            <option value="self_employed">Самозанятый</option>
+                        </select>
+                    </div>
+                    
+                    <div id="ooo_fields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-building"></i> Название организации
+                            </label>
+                            <input type="text" name="company_name" class="form-control form-control-lg" 
+                                   placeholder="ООО «Строй-Проект»">
+                        </div>
+                    </div>
+                    
+                    <div id="ip_fields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-person-badge"></i> ФИО ИП
+                            </label>
+                            <input type="text" name="full_name" class="form-control form-control-lg" 
+                                   placeholder="Иванов Иван Иванович">
+                        </div>
+                    </div>
+                    
+                    <div id="self_fields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-person"></i> ФИО
+                            </label>
+                            <input type="text" name="full_name" class="form-control form-control-lg" 
+                                   placeholder="Иванов Иван Иванович">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-card-text"></i> ИНН
+                        </label>
+                        <input type="text" name="inn" class="form-control form-control-lg" required 
+                               placeholder="123456789012">
+                        <small class="text-muted">10 или 12 цифр</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-card-list"></i> ОГРН / ОГРНИП
+                        </label>
+                        <input type="text" name="ogrn" class="form-control form-control-lg" 
+                               placeholder="123456789012345">
+                        <small class="text-muted">Для ИП и ООО (опционально)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-geo-alt"></i> Юридический адрес
+                        </label>
+                        <textarea name="address" class="form-control" rows="3" 
+                                  placeholder="г. Москва, ул. Строителей, д. 1, оф. 101"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-info btn-lg w-100">
+                        <i class="bi bi-save"></i> Сохранить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const entityType = document.getElementById('entity_type');
+    const oooFields = document.getElementById('ooo_fields');
+    const ipFields = document.getElementById('ip_fields');
+    const selfFields = document.getElementById('self_fields');
+    
+    entityType.addEventListener('change', function() {
+        oooFields.style.display = 'none';
+        ipFields.style.display = 'none';
+        selfFields.style.display = 'none';
+        
+        if (this.value === 'ooo') {
+            oooFields.style.display = 'block';
+        } else if (this.value === 'ip') {
+            ipFields.style.display = 'block';
+        } else if (this.value === 'self_employed') {
+            selfFields.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}

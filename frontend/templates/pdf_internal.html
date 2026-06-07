@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Коммерческое предложение - {{ project.name }}</title>
+    <title>Смета для себя - {{ project.name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -80,19 +80,6 @@
             font-size: 11px;
             color: #6b8c6b;
         }
-        .signature {
-            margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .signature-item { text-align: center; }
-        .signature-line {
-            width: 220px;
-            border-top: 1px solid #1B3B1A;
-            margin-top: 30px;
-            margin-bottom: 8px;
-        }
-        .signature-label { font-size: 11px; color: #6b8c6b; }
         .watermark {
             position: fixed;
             bottom: 80px;
@@ -115,6 +102,23 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
+        .expenses-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .expenses-table th {
+            background: #f8d7da;
+            color: #842029;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #dc3545;
+            font-weight: 600;
+        }
+        .expenses-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
@@ -127,22 +131,22 @@
             <div class="logo-icon">🏗️</div>
         {% endif %}
         <div class="company-name">{{ company_name }}</div>
-        <div class="doc-title">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</div>
+        <div class="doc-title">СМЕТА ДЛЯ СЕБЯ (ВНУТРЕННЯЯ)</div>
     </div>
     
     <div class="project-info">
         <table>
-            <tr><td class="label">Объект:</a><td><strong>{{ project.name }}</strong></a></tr>
-            <tr><td class="label">Адрес:</a><td>{{ project.address or '—' }}</a></tr>
-            <tr><td class="label">Заказчик:</a><td>{{ project.client_name or '—' }}</a></tr>
-            <tr><td class="label">Телефон:</a><td>{{ project.client_phone or '—' }}</a></tr>
+            <tr><td class="label">Объект:</td><td><strong>{{ project.name }}</strong></td></tr>
+            <tr><td class="label">Адрес:</td><td>{{ project.address or '—' }}</td></tr>
+            <tr><td class="label">Заказчик:</td><td>{{ project.client_name or '—' }}</td></tr>
+            <tr><td class="label">Телефон:</td><td>{{ project.client_phone or '—' }}</td></tr>
             {% if timeline %}
-            <tr><td class="label">Сроки работ:</a><td>{{ timeline.start_date|ru_date }} — {{ timeline.end_date|ru_date }}</a></tr>
+            <tr><td class="label">Сроки работ:</td><td>{{ timeline.start_date|ru_date }} — {{ timeline.end_date|ru_date }}</td></tr>
             {% endif %}
         </table>
     </div>
     
-    <div class="section-title">📋 СМЕТА РАБОТ</div>
+    <div class="section-title">💰 ДОХОД ПО СМЕТЕ</div>
     
     {% if works %}
     <table class="estimate">
@@ -152,22 +156,73 @@
                 <th>Наименование работ</th>
                 <th>Ед. изм.</th>
                 <th class="text-right">Кол-во</th>
+                <th class="text-right">Цена, руб</th>
+                <th class="text-right">Сумма, руб</th>
             </tr>
         </thead>
         <tbody>
             {% for work in works %}
             <tr>
-                <td style="width: 40px;">{{ work.num }}</a>
-                <td>{{ work.name }}</a>
-                <td style="width: 60px;">{{ work.unit }}</a>
-                <td class="price-cell" style="width: 100px;">{{ work.quantity|format_number }}</a>
+                <td style="width: 40px;">{{ work.num }}</td>
+                <td>{{ work.name }}</td>
+                <td style="width: 60px;">{{ work.unit }}</td>
+                <td class="price-cell" style="width: 80px;">{{ work.quantity|format_number }}</td>
+                <td class="price-cell" style="width: 100px;">{{ (work.work_price + work.material_price)|format_number }}</td>
+                <td class="price-cell" style="width: 110px;">{{ work.total|format_number }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="5" class="text-right"><strong>ИТОГО ДОХОД:</strong></td>
+                <td class="price-cell"><strong>{{ total_income|format_number }} ₽</strong></td>
+            </tr>
+        </tfoot>
     </table>
     {% else %}
     <div style="text-align: center; padding: 40px; color: #999;">Нет добавленных работ</div>
     {% endif %}
+    
+    <div class="section-title">📉 РАСХОДЫ ПО ПРОЕКТУ</div>
+    
+    {% if expenses %}
+    <table class="expenses-table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Наименование расхода</th>
+                <th class="text-right">Сумма, руб</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in expenses %}
+            <tr>
+                <td style="width: 40px;">{{ loop.index }}</td>
+                <td>{{ expense.name }}</td>
+                <td class="price-cell" style="width: 150px;">{{ expense.amount|format_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="2" class="text-right"><strong>ИТОГО РАСХОДОВ:</strong></td>
+                <td class="price-cell"><strong>{{ total_expenses|format_number }} ₽</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #999;">Нет расходов</div>
+    {% endif %}
+    
+    <div class="section-title">💵 ИТОГОВАЯ ПРИБЫЛЬ</div>
+    
+    <div class="profit-box">
+        <div class="profit-label">ПРИБЫЛЬ ПО ПРОЕКТУ</div>
+        <div class="profit-amount">{{ profit|format_number }} ₽</div>
+        <div class="profit-label" style="font-size: 11px; margin-top: 8px;">
+            Доход: {{ total_income|format_number }} ₽ | Расходы: {{ total_expenses|format_number }} ₽
+        </div>
+    </div>
     
     {% if photos %}
     <div class="section-title">📸 ФОТОГРАФИИ</div>
@@ -178,26 +233,9 @@
     </div>
     {% endif %}
     
-    <div class="profit-box">
-        <div class="profit-label">ИТОГОВАЯ СТОИМОСТЬ РАБОТ</div>
-        <div class="profit-amount">{{ total_income|format_number }} ₽</div>
-        <div class="profit-label" style="font-size: 11px; margin-top: 8px;">НДС не облагается</div>
-    </div>
-    
-    <div class="signature">
-        <div class="signature-item">
-            <div class="signature-line"></div>
-            <div class="signature-label">Подпись заказчика</div>
-        </div>
-        <div class="signature-item">
-            <div class="signature-line"></div>
-            <div class="signature-label">Подпись исполнителя / {{ company_name }}</div>
-        </div>
-    </div>
-    
     <div class="footer">
-        <div>Смета действительна в течение 30 календарных дней</div>
-        <div style="margin-top: 5px;">{{ company_phone }} | {{ company_email }} | ИНН: {{ company_inn }}</div>
+        <div>Смета для внутреннего использования</div>
+        <div style="margin-top: 5px;">{{ company_phone }} | {{ company_email }}</div>
     </div>
 </body>
 </html>

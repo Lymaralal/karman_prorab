@@ -1,0 +1,53 @@
+@'
+<nav class="navbar navbar-expand-lg" style="background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%); padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('dashboard') }}" style="color: white; font-weight: 700; font-size: 1.3rem;">
+            🏗️ Карманный Прораб
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard') }}" style="color: white; border-radius: 8px; padding: 8px 16px;">
+                        <i class="bi bi-speedometer2"></i> Дашборд
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('projects') }}" style="color: white; border-radius: 8px; padding: 8px 16px;">
+                        <i class="bi bi-briefcase"></i> Проекты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('services') }}" style="color: white; border-radius: 8px; padding: 8px 16px;">
+                        <i class="bi bi-tools"></i> Услуги
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('products') }}" style="color: white; border-radius: 8px; padding: 8px 16px;">
+                        <i class="bi bi-box-seam"></i> Товары
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('categories') }}" style="color: white; border-radius: 8px; padding: 8px 16px;">
+                        <i class="bi bi-tags"></i> Категории
+                    </a>
+                </li>
+            </ul>
+            <div class="dropdown">
+                <button class="btn dropdown-toggle" style="background: rgba(255,255,255,0.15); color: white; border-radius: 40px; padding: 8px 16px;" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle"></i> {{ current_user.full_name.split()[0] }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" style="border-radius: 12px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="bi bi-person"></i> Профиль</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('legal_entities') }}"><i class="bi bi-building"></i> Юр. лица</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('settings') }}"><i class="bi bi-gear"></i> Настройки</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Выйти</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+'@ | Out-File -FilePath "..\frontend\templates\menu.html" -Encoding UTF8

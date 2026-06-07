@@ -3,34 +3,89 @@
 {% block title %}Настройки компании{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">⚙️ Настройки компании</h4>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">⚙️ Настройки компании</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Название компании / ИП</label>
+                        <input type="text" name="company_name" class="form-control" value="{{ company_name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" name="company_phone" class="form-control" value="{{ company_phone }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="company_email" class="form-control" value="{{ company_email }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ИНН</label>
+                        <input type="text" name="company_inn" class="form-control" value="{{ company_inn }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">💾 Сохранить</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-        <form method="POST">
-            <div class="mb-3">
-                <label class="form-label">Название компании / ИП</label>
-                <input type="text" name="company_name" class="form-control" 
-                       value="{{ company_name }}" placeholder="ИП Смирнов | Строительство">
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="bi bi-image"></i> Логотип компании</h4>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Телефон</label>
-                <input type="text" name="company_phone" class="form-control" 
-                       value="{{ company_phone }}" placeholder="8(XXX)XXX-XX-XX">
+            <div class="card-body text-center">
+                {% set entity = LegalEntity.query.get(session.current_entity_id) if session.current_entity_id else current_user.legal_entities|selectattr('is_default', 'equalto', true)|first %}
+                {% if entity and entity.logo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/logo/' + entity.logo_filename) }}" 
+                         style="max-width: 200px; max-height: 100px; margin-bottom: 15px;" class="border rounded p-2">
+                {% else %}
+                    <div class="alert alert-info">Логотип не загружен</div>
+                {% endif %}
+                
+                <form id="logoForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" id="logoInput" name="logo" accept="image/*" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-success">📤 Загрузить логотип</button>
+                </form>
+                <small class="text-muted d-block mt-2">Логотип будет отображаться в PDF сметах</small>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" name="company_email" class="form-control" 
-                       value="{{ company_email }}" placeholder="info@example.com">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">ИНН (опционально)</label>
-                <input type="text" name="company_inn" class="form-control" 
-                       value="{{ company_inn }}" placeholder="1234567890">
-            </div>
-            <button type="submit" class="btn btn-primary">💾 Сохранить настройки</button>
-        </form>
+        </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('logoForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData();
+        const file = document.getElementById('logoInput').files[0];
+        if (!file) return;
+        formData.append('logo', file);
+        
+        const entityId = {{ (session.current_entity_id or (current_user.legal_entities|selectattr('is_default', 'equalto', true)|first).id) if (session.current_entity_id or current_user.legal_entities|selectattr('is_default', 'equalto', true)|first) else 'null' }};
+        if (!entityId) {
+            alert('Сначала добавьте юридическое лицо');
+            return;
+        }
+        
+        fetch(`/legal-entity/upload-logo/${entityId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Логотип загружен!');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    });
+</script>
 {% endblock %}

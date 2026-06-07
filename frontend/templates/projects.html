@@ -1,295 +1,180 @@
 {% extends "base.html" %}
 
-{% block title %}Мои проекты{% endblock %}
+{% block title %}Проекты - Карманный Прораб{% endblock %}
 
 {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="h2">
+        <i class="bi bi-briefcase text-success"></i> 
+        Строительные объекты
+    </h1>
+    <a href="{{ url_for('add_project') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Добавить объект
+    </a>
+</div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-primary text-white">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-            <h4 class="mb-0">Строительные объекты</h4>
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="🔍 Поиск по адресу, заказчику, телефону..." style="min-width: 200px;">
-                <a href="/projects/add" class="btn btn-light btn-sm">➕ Добавить объект</a>
+<!-- Карточки категорий  -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <a href="?status=На+этапе+согласования" class="text-decoration-none">
+            <div class="card text-center border-0 shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-info bg-opacity-10" style="width: 55px; height: 55px;">
+                        <i class="bi bi-clock-history fs-2 text-info"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'На этапе согласования')|list|length }}</h2>
+                    <small class="text-muted">На этапе согласования</small>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
-    <div class="card-body">
-        
-        <!-- Раздел: На этапе согласования -->
-        <div class="status-section mb-4" data-status="На этапе согласования">
-            <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
-                <h5 class="mb-0 text-secondary">📋 На этапе согласования</h5>
-                <span class="badge bg-secondary project-count">{{ projects | selectattr('status', 'equalto', 'На этапе согласования') | list | length }}</span>
-            </div>
-            <div class="section-content mt-2" style="display: none;">
-                {% set draft_projects = projects | selectattr('status', 'equalto', 'На этапе согласования') | list %}
-                {% if draft_projects %}
-                    <div class="list-group">
-                        {% for project in draft_projects %}
-                        <div class="list-group-item project-item" data-name="{{ project.name }}" data-address="{{ project.address }}" data-client="{{ project.client_name }}" data-phone="{{ project.client_phone }}">
-                            <div class="row align-items-center">
-                                <div class="col-md-7">
-                                    <h5 class="mb-1">{{ project.name }}</h5>
-                                    <p class="mb-1 text-muted small">{{ project.address or 'Адрес не указан' }}</p>
-                                    {% if project.client_name %}
-                                    <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
-                                    {% endif %}
-                                    <span class="badge bg-secondary">На этапе согласования</span>
-                                </div>
-                                <div class="col-md-3 text-center">
-                                    {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
-                                        {% set progress = project.progress if project.progress is defined else 0 %}
-                                        <div class="progress-circle" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
-                                            <span class="progress-text">{{ progress }}%</span>
-                                        </div>
-                                    {% else %}
-                                        <small class="text-muted">нет дат</small>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <a href="/project/{{ project.id }}" class="btn btn-sm btn-outline-primary">📋 Открыть</a>
-                                    <a href="/projects/delete/{{ project.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить проект?')">✖️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+    <div class="col-md-3 col-6">
+        <a href="?status=В+работе" class="text-decoration-none">
+            <div class="card text-center border-0 shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10" style="width: 55px; height: 55px;">
+                        <i class="bi bi-play-fill fs-2 text-warning"></i>
                     </div>
-                {% else %}
-                    <div class="alert alert-secondary mt-2">Нет проектов на этапе согласования</div>
-                {% endif %}
+                    <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'В работе')|list|length }}</h2>
+                    <small class="text-muted">В работе</small>
+                </div>
             </div>
-        </div>
-        
-        <!-- Раздел: В работе -->
-        <div class="status-section mb-4" data-status="В работе">
-            <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
-                <h5 class="mb-0 text-primary">🚧 В работе</h5>
-                <span class="badge bg-primary project-count">{{ projects | selectattr('status', 'equalto', 'В работе') | list | length }}</span>
-            </div>
-            <div class="section-content mt-2" style="display: none;">
-                {% set work_projects = projects | selectattr('status', 'equalto', 'В работе') | list %}
-                {% if work_projects %}
-                    <div class="list-group">
-                        {% for project in work_projects %}
-                        <div class="list-group-item project-item" data-name="{{ project.name }}" data-address="{{ project.address }}" data-client="{{ project.client_name }}" data-phone="{{ project.client_phone }}">
-                            <div class="row align-items-center">
-                                <div class="col-md-7">
-                                    <h5 class="mb-1">{{ project.name }}</h5>
-                                    <p class="mb-1 text-muted small">{{ project.address or 'Адрес не указан' }}</p>
-                                    {% if project.client_name %}
-                                    <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
-                                    {% endif %}
-                                    <span class="badge bg-primary">В работе</span>
-                                </div>
-                                <div class="col-md-3 text-center">
-                                    {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
-                                        {% set progress = project.progress if project.progress is defined else 0 %}
-                                        <div class="progress-circle" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
-                                            <span class="progress-text">{{ progress }}%</span>
-                                        </div>
-                                    {% else %}
-                                        <small class="text-muted">нет дат</small>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <a href="/project/{{ project.id }}" class="btn btn-sm btn-outline-primary">📋 Открыть</a>
-                                    <a href="/projects/delete/{{ project.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить проект?')">✖️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+        </a>
+    </div>
+    <div class="col-md-3 col-6">
+        <a href="?status=Завершённые" class="text-decoration-none">
+            <div class="card text-center border-0 shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-10" style="width: 55px; height: 55px;">
+                        <i class="bi bi-check-lg fs-2 text-success"></i>
                     </div>
-                {% else %}
-                    <div class="alert alert-secondary mt-2">Нет проектов в работе</div>
-                {% endif %}
+                    <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'Завершённые')|list|length }}</h2>
+                    <small class="text-muted">Завершённые</small>
+                </div>
             </div>
-        </div>
-        
-        <!-- Раздел: Завершённые -->
-        <div class="status-section mb-4" data-status="Завершённые">
-            <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
-                <h5 class="mb-0 text-success">✅ Завершённые</h5>
-                <span class="badge bg-success project-count">{{ projects | selectattr('status', 'equalto', 'Завершённые') | list | length }}</span>
-            </div>
-            <div class="section-content mt-2" style="display: none;">
-                {% set completed_projects = projects | selectattr('status', 'equalto', 'Завершённые') | list %}
-                {% if completed_projects %}
-                    <div class="list-group">
-                        {% for project in completed_projects %}
-                        <div class="list-group-item project-item" data-name="{{ project.name }}" data-address="{{ project.address }}" data-client="{{ project.client_name }}" data-phone="{{ project.client_phone }}">
-                            <div class="row align-items-center">
-                                <div class="col-md-7">
-                                    <h5 class="mb-1">{{ project.name }}</h5>
-                                    <p class="mb-1 text-muted small">{{ project.address or 'Адрес не указан' }}</p>
-                                    {% if project.client_name %}
-                                    <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
-                                    {% endif %}
-                                    <span class="badge bg-success">Завершённые</span>
-                                </div>
-                                <div class="col-md-3 text-center">
-                                    {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
-                                        {% set progress = project.progress if project.progress is defined else 0 %}
-                                        <div class="progress-circle" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
-                                            <span class="progress-text">{{ progress }}%</span>
-                                        </div>
-                                    {% else %}
-                                        <small class="text-muted">нет дат</small>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <a href="/project/{{ project.id }}" class="btn btn-sm btn-outline-primary">📋 Открыть</a>
-                                    <a href="/projects/delete/{{ project.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить проект?')">✖️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+        </a>
+    </div>
+    <div class="col-md-3 col-6">
+        <a href="?status=Отложенные" class="text-decoration-none">
+            <div class="card text-center border-0 shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-secondary bg-opacity-10" style="width: 55px; height: 55px;">
+                        <i class="bi bi-pause-fill fs-2 text-secondary"></i>
                     </div>
-                {% else %}
-                    <div class="alert alert-secondary mt-2">Нет завершённых проектов</div>
-                {% endif %}
+                    <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'Отложенные')|list|length }}</h2>
+                    <small class="text-muted">Отложенные</small>
+                </div>
             </div>
-        </div>
-        
-        <!-- Раздел: Отложенные -->
-        <div class="status-section mb-4" data-status="Отложенные">
-            <div class="d-flex justify-content-between align-items-center section-header" style="cursor: pointer;">
-                <h5 class="mb-0 text-warning">⏸ Отложенные</h5>
-                <span class="badge bg-warning text-dark project-count">{{ projects | selectattr('status', 'equalto', 'Отложенные') | list | length }}</span>
-            </div>
-            <div class="section-content mt-2" style="display: none;">
-                {% set delayed_projects = projects | selectattr('status', 'equalto', 'Отложенные') | list %}
-                {% if delayed_projects %}
-                    <div class="list-group">
-                        {% for project in delayed_projects %}
-                        <div class="list-group-item project-item" data-name="{{ project.name }}" data-address="{{ project.address }}" data-client="{{ project.client_name }}" data-phone="{{ project.client_phone }}">
-                            <div class="row align-items-center">
-                                <div class="col-md-7">
-                                    <h5 class="mb-1">{{ project.name }}</h5>
-                                    <p class="mb-1 text-muted small">{{ project.address or 'Адрес не указан' }}</p>
-                                    {% if project.client_name %}
-                                    <p class="mb-1 text-muted small">👤 {{ project.client_name }} {% if project.client_phone %} 📞 {{ project.client_phone }}{% endif %}</p>
-                                    {% endif %}
-                                    <span class="badge bg-warning text-dark">Отложенные</span>
-                                </div>
-                                <div class="col-md-3 text-center">
-                                    {% if project.timeline and project.timeline.start_date and project.timeline.end_date %}
-                                        {% set progress = project.progress if project.progress is defined else 0 %}
-                                        <div class="progress-circle" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
-                                            <span class="progress-text">{{ progress }}%</span>
-                                        </div>
-                                    {% else %}
-                                        <small class="text-muted">нет дат</small>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <a href="/project/{{ project.id }}" class="btn btn-sm btn-outline-primary">📋 Открыть</a>
-                                    <a href="/projects/delete/{{ project.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить проект?')">✖️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="alert alert-secondary mt-2">Нет отложенных проектов</div>
-                {% endif %}
-            </div>
-        </div>
-        
+        </a>
     </div>
 </div>
 
-<style>
-    .progress-circle {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        background: conic-gradient(var(--progress-color) 0deg, var(--progress-color) calc(var(--progress) * 3.6deg), #e9ecef calc(var(--progress) * 3.6deg), #e9ecef 360deg);
-    }
-    .progress-circle::before {
-        content: "";
-        position: absolute;
-        width: 48px;
-        height: 48px;
-        background: white;
-        border-radius: 50%;
-    }
-    .progress-text {
-        position: relative;
-        font-size: 14px;
-        font-weight: bold;
-        z-index: 1;
-    }
-    .section-header:hover {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 5px 10px;
-        margin: -5px -10px;
-    }
-    @media (max-width: 768px) {
-        .progress-circle {
-            width: 40px;
-            height: 40px;
-        }
-        .progress-circle::before {
-            width: 32px;
-            height: 32px;
-        }
-        .progress-text {
-            font-size: 10px;
-        }
-    }
-</style>
+<!-- Таблица проектов -->
+<div class="card shadow-sm" id="projectsTableCard" style="display: none;">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-building"></i> Список объектов</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Адрес</th>
+                        <th>Заказчик</th>
+                        <th>Телефон</th>
+                        <th>Статус</th>
+                        <th>Прогресс</th>
+                        <th>Доход</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                    {% for project in projects %}
+                    <tr class="project-row" data-status="{{ project.status }}" data-name="{{ project.name|lower }}" data-address="{{ (project.address or '').lower() }}" data-client="{{ (project.client_name or '').lower() }}" data-phone="{{ project.client_phone or '' }}">
+                        <td>
+                            <a href="{{ url_for('project_detail', project_id=project.id) }}" class="text-decoration-none fw-bold text-success">
+                                {{ project.name }}
+                            </a>
+                        </a>
+                        <td>{{ project.address or '—' }}</a>
+                        <td>{{ project.client_name or '—' }}</a>
+                        <td>{{ project.client_phone or '—' }}</a>
+                        <td>
+                            <span class="badge 
+                                {% if project.status == 'В работе' %}bg-warning
+                                {% elif project.status == 'Завершённые' %}bg-success
+                                {% elif project.status == 'Отложенные' %}bg-secondary
+                                {% else %}bg-info{% endif %}">
+                                {{ project.status }}
+                            </span>
+                        </a>
+                        <td style="width: 120px;">
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" style="width: {{ project.progress }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ project.progress }}%</small>
+                        </a>
+                        <td class="text-nowrap">{{ project.works|sum(attribute='total_price')|default(0)|format_number }} ₽</a>
+                        <td class="text-nowrap">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-primary" title="Открыть">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('copy_project', project_id=project.id) }}" class="btn btn-outline-secondary" title="Копировать" onclick="return confirm('Скопировать проект?')">
+                                    <i class="bi bi-files"></i>
+                                </a>
+                                <a href="{{ url_for('delete_project', id=project.id) }}" class="btn btn-outline-danger" title="Удалить" onclick="return confirm('Удалить проект?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </a>
+                    </a>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <script>
-    // Открытие/закрытие разделов
-    document.querySelectorAll('.section-header').forEach(header => {
-        header.addEventListener('click', () => {
-            const content = header.parentElement.querySelector('.section-content');
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
+    const tableCard = document.getElementById('projectsTableCard');
+    const rows = document.querySelectorAll('.project-row');
+    const tbody = document.getElementById('projectsTableBody');
+    
+    function filterTableByStatus(status) {
+        let hasVisible = false;
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            if (status === 'all' || rowStatus === status) {
+                row.style.display = '';
+                hasVisible = true;
             } else {
-                content.style.display = 'none';
+                row.style.display = 'none';
             }
         });
-    });
+        
+        // Удаляем старое сообщение, если было
+        const existingMsg = document.getElementById('noResultsMsg');
+        if (existingMsg) existingMsg.remove();
+        
+        // Показываем сообщение, если нет результатов
+        if (!hasVisible && rows.length > 0) {
+            const msgRow = document.createElement('tr');
+            msgRow.id = 'noResultsMsg';
+            msgRow.innerHTML = '<td colspan="8" class="text-center text-muted py-4">📭 Проектов не найдено</td>';
+            tbody.appendChild(msgRow);
+        }
+    }
     
-    // Поиск
-    const searchInput = document.getElementById('searchInput');
-    const projectItems = document.querySelectorAll('.project-item');
+    // Получение фильтра из URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusParam = urlParams.get('status');
     
-    searchInput.addEventListener('input', function() {
-        const query = this.value.toLowerCase().trim();
-        projectItems.forEach(item => {
-            const name = item.getAttribute('data-name')?.toLowerCase() || '';
-            const address = item.getAttribute('data-address')?.toLowerCase() || '';
-            const client = item.getAttribute('data-client')?.toLowerCase() || '';
-            const phone = item.getAttribute('data-phone')?.toLowerCase() || '';
-            if (query === '' || name.includes(query) || address.includes(query) || client.includes(query) || phone.includes(query)) {
-                item.style.display = '';
-                let section = item.closest('.section-content');
-                if (section) section.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-    
-    // Применяем цвет прогресса
-    document.querySelectorAll('.progress-circle').forEach(el => {
-        const progress = parseInt(el.style.getPropertyValue('--progress'));
-        let color = '#198754';
-        if (progress < 30) color = '#dc3545';
-        else if (progress < 50) color = '#fd7e14';
-        else if (progress < 70) color = '#ffc107';
-        else if (progress < 90) color = '#20c997';
-        else color = '#198754';
-        el.style.setProperty('--progress-color', color);
-    });
+    if (statusParam && tableCard) {
+        const normalizedParam = decodeURIComponent(statusParam);
+        tableCard.style.display = 'block';
+        filterTableByStatus(normalizedParam);
+    }
 </script>
-
 {% endblock %}

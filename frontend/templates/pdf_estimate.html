@@ -1,118 +1,213 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <title>Смета - {{ project.name }}</title>
+    <meta charset="UTF-8">
+    <title>Коммерческое предложение - {{ project.name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
-            color: #333;
-            padding: 20px;
+            font-family: 'DejaVu Sans', 'Arial', sans-serif;
+            background: white;
+            color: #1B3B1A;
+            padding: 40px;
+            font-size: 13px;
         }
-        .header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #2c3e50; }
-        .header h1 { color: #2c3e50; font-size: 24pt; margin-bottom: 5px; }
-        .header .subtitle { color: #7f8c8d; font-size: 10pt; }
-        .contacts { margin-bottom: 20px; font-size: 9pt; color: #555; }
-        .client-info { background: #f5f5f5; padding: 12px; margin-bottom: 20px; border-left: 4px solid #2c3e50; }
-        .client-info h3 { font-size: 12pt; margin-bottom: 8px; color: #2c3e50; }
-        .client-info p { margin: 3px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-        th { background: #2c3e50; color: white; font-weight: bold; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #4CAF50; }
+        .logo-img { max-height: 60px; max-width: 200px; margin-bottom: 10px; }
+        .logo-icon { font-size: 48px; color: #2E7D32; margin-bottom: 10px; }
+        .company-name { font-size: 22px; font-weight: bold; color: #1B5E20; }
+        .doc-title { font-size: 26px; font-weight: bold; margin: 15px 0 5px; color: #2E7D32; }
+        .project-info {
+            background: #F1F8F1;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4CAF50;
+        }
+        .project-info table { width: 100%; }
+        .project-info td { padding: 6px 10px; }
+        .label { font-weight: bold; color: #2E7D32; width: 130px; }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1B5E20;
+            margin: 25px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #A5D6A7;
+        }
+        table.estimate {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        table.estimate th {
+            background: #E8F5E9;
+            color: #1B5E20;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #4CAF50;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        table.estimate td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #C8E6C9;
+        }
+        .total-row {
+            background: #E8F5E9;
+            font-weight: bold;
+        }
+        .total-row td {
+            border-top: 2px solid #4CAF50;
+            padding: 12px;
+            font-size: 15px;
+        }
+        .profit-box {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid #A5D6A7;
+        }
+        .profit-box .profit-label { font-size: 14px; color: #1B5E20; text-transform: uppercase; letter-spacing: 1px; }
+        .profit-box .profit-amount { font-size: 28px; font-weight: bold; color: #2E7D32; }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #C8E6C9;
+            text-align: center;
+            font-size: 11px;
+            color: #6b8c6b;
+        }
+        .signature {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-item { text-align: center; }
+        .signature-line {
+            width: 220px;
+            border-top: 1px solid #1B3B1A;
+            margin-top: 30px;
+            margin-bottom: 8px;
+        }
+        .signature-label { font-size: 11px; color: #6b8c6b; }
+        .watermark {
+            position: fixed;
+            bottom: 80px;
+            right: 50px;
+            opacity: 0.04;
+            font-size: 70px;
+            color: #4CAF50;
+            transform: rotate(-15deg);
+            font-weight: bold;
+        }
         .text-right { text-align: right; }
-        .total-row { background: #ecf0f1; font-weight: bold; }
-        .total-row td { border-top: 2px solid #2c3e50; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 9pt; text-align: center; color: #7f8c8d; }
-        .signature { margin-top: 30px; display: flex; justify-content: space-between; }
-        .signature div { width: 45%; }
-        .signature-line { border-top: 1px solid #333; margin-top: 30px; padding-top: 5px; }
-        .project-details { font-size: 9pt; margin-bottom: 15px; }
-        .profit-box { background: #27ae60; color: white; padding: 8px 15px; border-radius: 5px; text-align: center; margin-top: 15px; }
+        .price-cell { text-align: right; font-family: monospace; font-size: 13px; }
+        .photo-gallery {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .photo-gallery img {
+            max-width: 200px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-
-<div class="header">
-    <h1>КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</h1>
-    <div class="subtitle">{{ company_name }}</div>
-</div>
-
-<div class="contacts">
-    <strong>Телефон:</strong> {{ company_phone }} &nbsp;|&nbsp;
-    <strong>Email:</strong> {{ company_email }}
-    {% if company_inn %} &nbsp;|&nbsp; <strong>ИНН:</strong> {{ company_inn }}{% endif %}
-</div>
-
-<div class="client-info">
-    <h3>Объект: {{ project.name }}</h3>
-    <p><strong>Адрес:</strong> {{ project.address or 'Не указан' }}</p>
-    <p><strong>Заказчик:</strong> {{ project.client_name or 'Не указан' }} &nbsp;|&nbsp;
-    <strong>Телефон:</strong> {{ project.client_phone or 'Не указан' }}</p>
-    {% if timeline %}
-    <p><strong>Сроки:</strong> {{ timeline.start_date or '—' }} → {{ timeline.end_date or '—' }}</p>
+    <div class="watermark">КАРМАННЫЙ ПРОРАБ</div>
+    
+    <div class="header">
+        {% if logo_url %}
+            <img src="{{ logo_url }}" class="logo-img" alt="Логотип">
+        {% else %}
+            <div class="logo-icon">🏗️</div>
+        {% endif %}
+        <div class="company-name">{{ company_name }}</div>
+        <div class="doc-title">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</div>
+    </div>
+    
+    <div class="project-info">
+        <table>
+            <tr><td class="label">Объект:</td><td><strong>{{ project.name }}</strong></td></tr>
+            <tr><td class="label">Адрес:</td><td>{{ project.address or '—' }}</td></tr>
+            <tr><td class="label">Заказчик:</td><td>{{ project.client_name or '—' }}</td></tr>
+            <tr><td class="label">Телефон:</td><td>{{ project.client_phone or '—' }}</td></tr>
+            {% if timeline %}
+            <tr><td class="label">Сроки работ:</td><td>{{ timeline.start_date|ru_date }} — {{ timeline.end_date|ru_date }}</td></tr>
+            {% endif %}
+        </table>
+    </div>
+    
+    <div class="section-title">📋 СМЕТА РАБОТ</div>
+    
+    {% if works %}
+    <table class="estimate">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Наименование работ</th>
+                <th>Ед. изм.</th>
+                <th class="text-right">Кол-во</th>
+                <th class="text-right">Цена, руб</th>
+                <th class="text-right">Сумма, руб</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for work in works %}
+            <tr>
+                <td style="width: 40px;">{{ work.num }}</td>
+                <td>{{ work.name }}</td>
+                <td style="width: 60px;">{{ work.unit }}</td>
+                <td class="price-cell" style="width: 80px;">{{ work.quantity|format_number }}</td>
+                <td class="price-cell" style="width: 100px;">{{ (work.work_price + work.material_price)|format_number }}</td>
+                <td class="price-cell" style="width: 110px;">{{ work.total|format_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="5" class="text-right"><strong>ИТОГО:</strong></td>
+                <td class="price-cell"><strong>{{ total_income|format_number }} ₽</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #999;">Нет добавленных работ</div>
     {% endif %}
-</div>
-
-<h3>СМЕТА РАБОТ</h3>
-
-{% if works %}
-<table>
-    <thead>
-        <tr>
-            <th style="width: 5%;">№</th>
-            <th style="width: 50%;">Наименование работ</th>
-            <th style="width: 10%;">Ед.изм</th>
-            <th style="width: 10%;">Кол-во</th>
-            <th style="width: 10%;">Цена</th>
-            <th style="width: 15%;">Стоимость</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for work in works %}
-        <tr>
-            <td class="text-right">{{ work.num }}</td>
-            <td>{{ work.name }}</td>
-            <td>{{ work.unit }}</td>
-            <td class="text-right">{{ "%.2f"|format(work.quantity) }}</td>
-            <td class="text-right">{{ "%.2f"|format(work.price) }} ₽</td>
-            <td class="text-right">{{ "%.2f"|format(work.total) }} ₽</td>
-        </tr>
+    
+    {% if photos %}
+    <div class="section-title">📸 ФОТОГРАФИИ</div>
+    <div class="photo-gallery">
+        {% for photo in photos %}
+        <img src="{{ url_for('static', filename='uploads/project_photos/' + photo.filename, _external=True) }}" alt="Фото">
         {% endfor %}
-        <tr class="total-row">
-            <td colspan="5" class="text-right"><strong>ИТОГО:</strong></td>
-            <td class="text-right"><strong>{{ "%.2f"|format(total_income) }} ₽</strong></td>
-        </tr>
-    </tbody>
-</table>
-{% else %}
-<p style="color: #999;">Работы не добавлены</p>
-{% endif %}
-
-<div class="profit-box">
-    <strong>ИТОГОВАЯ СУММА: {{ "%.2f"|format(total_income) }} ₽</strong>
-</div>
-
-<div class="project-details">
-    <p><strong>Комментарий:</strong> В смету включены все материалы, работы и доставка. Цены действительны в течение 30 дней.</p>
-</div>
-
-<div class="signature">
-    <div>
-        <div class="signature-line"></div>
-        <p>Подпись заказчика</p>
     </div>
-    <div>
-        <div class="signature-line"></div>
-        <p>Подпись исполнителя</p>
+    {% endif %}
+    
+    <div class="profit-box">
+        <div class="profit-label">ОКОНЧАТЕЛЬНАЯ СТОИМОСТЬ РАБОТ</div>
+        <div class="profit-amount">{{ total_income|format_number }} ₽</div>
+        <div class="profit-label" style="font-size: 11px; margin-top: 8px;">НДС не облагается</div>
     </div>
-</div>
-
-<div class="footer">
-    Документ сформирован автоматически
-</div>
-
+    
+    <div class="signature">
+        <div class="signature-item">
+            <div class="signature-line"></div>
+            <div class="signature-label">Подпись заказчика</div>
+        </div>
+        <div class="signature-item">
+            <div class="signature-line"></div>
+            <div class="signature-label">Подпись исполнителя / {{ company_name }}</div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div>Смета действительна в течение 30 календарных дней</div>
+        <div style="margin-top: 5px;">{{ company_phone }} | {{ company_email }} | ИНН: {{ company_inn }}</div>
+    </div>
 </body>
 </html>

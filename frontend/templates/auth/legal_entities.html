@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Юридические лица - Карманный Прораб{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-building text-success"></i> Юридические лица</h1>
+    <a href="{{ url_for('add_legal_entity') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Добавить юр. лицо
+    </a>
+</div>
+
+{% if entities %}
+    <div class="row">
+        {% for entity in entities %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 {% if entity.is_default %}border-success border-3{% endif %} shadow-sm">
+                <div class="card-header {% if entity.is_default %}bg-success text-white{% else %}bg-dark text-white{% endif %}">
+                    <h5 class="mb-0">
+                        {% if entity.entity_type == 'ooo' %}
+                            <i class="bi bi-building"></i> ООО
+                        {% elif entity.entity_type == 'ip' %}
+                            <i class="bi bi-person-badge"></i> ИП
+                        {% else %}
+                            <i class="bi bi-person"></i> Самозанятый
+                        {% endif %}
+                        {{ entity.name }}
+                        {% if entity.is_default %}
+                            <span class="badge bg-light text-dark ms-2">По умолчанию</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>ИНН:</strong> {{ entity.inn }}</p>
+                    {% if entity.ogrn %}
+                    <p><strong>ОГРН:</strong> {{ entity.ogrn }}</p>
+                    {% endif %}
+                    {% if entity.address %}
+                    <p><strong>Адрес:</strong> {{ entity.address }}</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white">
+                    {% if not entity.is_default %}
+                    <a href="{{ url_for('set_default_entity', entity_id=entity.id) }}" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-star"></i> Сделать основным
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('switch_entity', entity_id=entity.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-arrow-right-circle"></i> Переключиться
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-building fs-1 text-muted"></i>
+        <p class="mt-3">У вас пока нет добавленных юридических лиц</p>
+        <a href="{{ url_for('add_legal_entity') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Добавить юр. лицо
+        </a>
+    </div>
+{% endif %}
+{% endblock %}

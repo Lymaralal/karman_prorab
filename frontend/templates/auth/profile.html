@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Мой профиль - Карманный Прораб{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-header bg-success text-white rounded-top-4 border-0 py-3 d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-person-circle"></i> Мой профиль</h4>
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+            </div>
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="avatar-circle mx-auto mb-3" style="width: 100px; height: 100px; background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 48px; color: white;">{{ current_user.full_name[0]|upper }}</span>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-success">ФИО:</label>
+                        <p class="fs-5">{{ current_user.full_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-success">Email:</label>
+                        <p class="fs-5">{{ current_user.email }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-success">Телефон:</label>
+                        <p class="fs-5">{{ current_user.phone }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold text-success">Дата регистрации:</label>
+                        <p class="fs-5">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</p>
+                    </div>
+                </div>
+                
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад
+                    </a>
+                    <a href="{{ url_for('legal_entities') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-building"></i> Мои юр. лица
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        transition: transform 0.3s;
+    }
+    .avatar-circle:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}

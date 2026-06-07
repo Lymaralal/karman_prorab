@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Рабочий стол - Карманный Прораб{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="h2">
+        <i class="bi bi-speedometer2 text-success"></i> 
+        Рабочий стол
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('add_project') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-plus-circle"></i> Проект
+        </a>
+        <a href="{{ url_for('add_service') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-tools"></i> Услуга
+        </a>
+        <a href="{{ url_for('add_product') }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-box"></i> Товар
+        </a>
+        <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-gear"></i> Настройки
+        </a>
+    </div>
+</div>
+
+<!-- карточки категорий -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-info bg-opacity-10" style="width: 55px; height: 55px;">
+                    <i class="bi bi-clock-history fs-2 text-info"></i>
+                </div>
+                <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'На этапе согласования')|list|length }}</h2>
+                <small class="text-muted">На этапе согласования</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10" style="width: 55px; height: 55px;">
+                    <i class="bi bi-play-fill fs-2 text-warning"></i>
+                </div>
+                <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'В работе')|list|length }}</h2>
+                <small class="text-muted">В работе</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-10" style="width: 55px; height: 55px;">
+                    <i class="bi bi-check-lg fs-2 text-success"></i>
+                </div>
+                <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'Завершённые')|list|length }}</h2>
+                <small class="text-muted">Завершённые</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card text-center border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-secondary bg-opacity-10" style="width: 55px; height: 55px;">
+                    <i class="bi bi-pause-fill fs-2 text-secondary"></i>
+                </div>
+                <h2 class="fw-bold mb-0 text-dark">{{ projects|selectattr('status', 'equalto', 'Отложенные')|list|length }}</h2>
+                <small class="text-muted">Отложенные</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- график доходов -->
+{% if chart_months and chart_incomes %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white py-2">
+        <h6 class="mb-0"><i class="bi bi-graph-up"></i> Динамика доходов по месяцам</h6>
+    </div>
+    <div class="card-body p-3">
+        <canvas id="incomeChart" height="60" style="max-height: 160px;"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('incomeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_months|tojson }},
+                datasets: [{
+                    label: 'Доход, ₽',
+                    data: {{ chart_incomes|tojson }},
+                    backgroundColor: 'rgba(46, 125, 50, 0.7)',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: { 
+                        callbacks: { 
+                            label: function(ctx) { 
+                                return ctx.raw.toLocaleString('ru-RU') + ' ₽'; 
+                            } 
+                        } 
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { 
+                            font: { size: 10 }, 
+                            callback: function(value) { 
+                                return value.toLocaleString('ru-RU'); 
+                            } 
+                        }, 
+                        grid: { display: false } 
+                    },
+                    x: { 
+                        ticks: { 
+                            font: { size: 10, rotation: 0, autoSkip: true, maxRotation: 0 } 
+                        } 
+                    }
+                },
+                layout: { 
+                    padding: { top: 10, bottom: 10 } 
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+
+<!-- последние проекты -->
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+        <h6 class="mb-0"><i class="bi bi-clock-history"></i> Последние проекты</h6>
+        <a href="{{ url_for('projects') }}" class="btn btn-sm btn-light">Все проекты →</a>
+    </div>
+    <div class="card-body p-0">
+        {% if projects %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Заказчик</th>
+                            <th>Телефон</th>
+                            <th>Статус</th>
+                            <th style="width: 70px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in projects[:5] %}
+                        <tr>
+                            <td>{{ p.name|truncate(35) }}</a>
+                            <td>{{ p.client_name or '—' }}</a>
+                            <td>{{ p.client_phone or '—' }}</a>
+                            <td>
+                                <span class="badge 
+                                    {% if p.status == 'В работе' %}bg-warning
+                                    {% elif p.status == 'Завершённые' %}bg-success
+                                    {% elif p.status == 'Отложенные' %}bg-secondary
+                                    {% else %}bg-info{% endif %}">
+                                    {{ p.status }}
+                                </span>
+                            </a>
+                            <td>
+                                <a href="{{ url_for('project_detail', project_id=p.id) }}" class="btn btn-sm btn-primary" title="Открыть">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </a>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-folder2-open fs-1 text-muted"></i>
+                <p class="mt-3">У вас пока нет проектов</p>
+                <a href="{{ url_for('add_project') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Создать первый проект
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <small class="text-muted">
+        <i class="bi bi-quote"></i> Управляй стройкой профессионально с Карманным Прорабом
+    </small>
+</div>
+{% endblock %}

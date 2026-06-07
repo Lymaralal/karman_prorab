@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование профиля - Карманный Прораб{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-header bg-success text-white rounded-top-4 border-0 py-3">
+                <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Редактирование профиля</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('edit_profile') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ФИО</label>
+                        <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ current_user.email }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Телефон</label>
+                        <input type="tel" name="phone" class="form-control" value="{{ current_user.phone }}" required>
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h5 class="text-success"><i class="bi bi-lock"></i> Смена пароля</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль (оставьте пустым, если не хотите менять)</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="Не менее 6 символов">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Подтверждение нового пароля</label>
+                        <input type="password" name="confirm_password" class="form-control" placeholder="Повторите пароль">
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('profile') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+                
+                <hr class="my-4">
+                <div class="alert alert-danger">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Опасная зона</h6>
+                    <p class="small">Удаление аккаунта приведёт к безвозвратной потере всех проектов и данных.</p>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                        <i class="bi bi-trash"></i> Удалить аккаунт
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Удаление аккаунта</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить свой аккаунт?</p>
+                <p class="text-danger"><strong>Это действие необратимо!</strong> Все ваши проекты, сметы и данные будут удалены навсегда.</p>
+                <form id="deleteAccountForm" method="POST" action="{{ url_for('delete_profile') }}">
+                    <div class="mb-3">
+                        <label>Введите пароль для подтверждения:</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-danger">Да, удалить аккаунт</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

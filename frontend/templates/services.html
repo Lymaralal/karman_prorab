@@ -3,40 +3,40 @@
 {% block title %}Мои услуги{% endblock %}
 
 {% block content %}
+
 <div class="card shadow-sm">
-    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-        <h4 class="mb-0">Мои услуги и расценки</h4>
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">💰 Мои услуги и расценки</h4>
         <a href="/services/add" class="btn btn-light btn-sm">➕ Добавить услугу</a>
     </div>
     <div class="card-body">
-        {% if services %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Единица измерения</th>
-                            <th>Цена (руб)</th>
-                            <th></th>
-                        </thead>
-                    <tbody>
-                        {% for service in services %}
-                        <tr>
-                            <td>{{ service.name }}</td>
-                            <td>{{ service.unit }}</td>
-                            <td>{{ service.price }}</td>
-                            <td>
-                                <a href="/services/edit/{{ service.id }}" class="btn btn-sm btn-outline-primary">✏️</a>
-                                <a href="/services/delete/{{ service.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить услугу?')">✖️</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="alert alert-warning">Услуг пока нет. Добавьте первую!</div>
-        {% endif %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Единица измерения</th>
+                        <th>Цена работы (руб)</th>
+                        <th>Материалы</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in services %}
+                    <tr>
+                        <td>{{ service.name }}</td>
+                        <td>{{ service.unit }}</td>
+                        <td>{{ service.work_price | format_number }}</td>
+                        <td>{% if service.material_price > 0 %}включены{% else %}клиент покупает сам{% endif %}</td>
+                        <td>
+                            <a href="/services/edit/{{ service.id }}" class="btn btn-sm btn-outline-primary">✏️</a>
+                            <a href="/services/delete/{{ service.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить услугу?')">✖️</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
