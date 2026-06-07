@@ -14,17 +14,21 @@ from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
+# пути для TIMEWEB
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, '../frontend/templates')
+STATIC_DIR = os.path.join(BASE_DIR, '../frontend/static')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///karman_prorab.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 # настройки загрузки файлов
-
-UPLOAD_FOLDER_RECEIPTS = 'frontend/static/uploads/receipts'
-UPLOAD_FOLDER_PHOTOS = 'frontend/static/uploads/project_photos'
-UPLOAD_FOLDER_LOGO = 'frontend/static/uploads/logo'
+UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads/receipts')
+UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads/project_photos')
+UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads/logo')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER_RECEIPTS'] = UPLOAD_FOLDER_RECEIPTS
@@ -38,7 +42,7 @@ os.makedirs(UPLOAD_FOLDER_LOGO, exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Настройка LoginManager
+# настройка LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -50,7 +54,7 @@ ESTIMATE_MODES = ['client_no_materials', 'client_with_materials', 'internal']
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# модели
+# модели 
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -427,7 +431,7 @@ def delete_profile():
     flash('Аккаунт удалён', 'info')
     return redirect(url_for('index'))
 
-# темная тема  
+# темная тема 
 
 @app.route('/toggle-theme')
 @login_required
@@ -1501,7 +1505,7 @@ def update_work_ajax(project_id, work_id):
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
-# поиск с подсказкаами 
+# поиск с подсказками 
 
 @app.route('/api/search-projects')
 @login_required
@@ -1532,4 +1536,5 @@ with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
