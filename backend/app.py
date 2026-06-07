@@ -1,5 +1,4 @@
 import os
-import sys
 import re
 import io
 import tempfile
@@ -12,10 +11,10 @@ from flask_login import LoginManager, login_required, login_user, logout_user, c
 from weasyprint import HTML
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# пути для TIMEWEB 
+#пути для TIMEWEB
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'templates')
@@ -40,15 +39,18 @@ print(f"Database path: {DB_PATH}", flush=True)
 UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads', 'receipts')
 UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads', 'project_photos')
 UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads', 'logo')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER_TEMPLATES = os.path.join(STATIC_DIR, 'uploads', 'templates')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'xlsx', 'csv'}
 
 app.config['UPLOAD_FOLDER_RECEIPTS'] = UPLOAD_FOLDER_RECEIPTS
 app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
 app.config['UPLOAD_FOLDER_LOGO'] = UPLOAD_FOLDER_LOGO
+app.config['UPLOAD_FOLDER_TEMPLATES'] = UPLOAD_FOLDER_TEMPLATES
 
 os.makedirs(UPLOAD_FOLDER_RECEIPTS, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_PHOTOS, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_LOGO, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER_TEMPLATES, exist_ok=True)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -206,7 +208,18 @@ class Setting(db.Model):
             db.session.add(setting)
         db.session.commit()
 
-# контекстные процессоры 
+# модель: шаблоны смет
+class Template(db.Model):
+    __tablename__ = 'template'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    filename = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='templates')
+
+# контекстные процессоры
 
 @app.context_processor
 def inject_globals():
@@ -292,7 +305,7 @@ def get_progress_color(progress):
 def health():
     return 'OK', 200
 
-# маршруты 
+# =маршруты аутентификации
 
 @app.route('/')
 def index():
@@ -388,6 +401,8 @@ def add_legal_entity():
     
     return render_template('auth/add_legal_entity.html')
 
+# профиль 
+
 @app.route('/profile')
 @login_required
 def profile():
@@ -437,6 +452,7 @@ def delete_profile():
     
     Project.query.filter_by(user_id=current_user.id).delete()
     LegalEntity.query.filter_by(user_id=current_user.id).delete()
+    Template.query.filter_by(user_id=current_user.id).delete()
     
     db.session.delete(current_user)
     db.session.commit()
@@ -445,12 +461,16 @@ def delete_profile():
     flash('Аккаунт удалён', 'info')
     return redirect(url_for('index'))
 
+# темная тема 
+
 @app.route('/toggle-theme')
 @login_required
 def toggle_theme():
     current_user.theme = 'dark' if current_user.theme == 'light' else 'light'
     db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
+
+# юр. лица 
 
 @app.route('/legal-entities')
 @login_required
@@ -517,6 +537,8 @@ def switch_entity(entity_id):
     session['current_entity_id'] = entity_id
     flash(f'Вы работаете от имени: {entity.name}', 'success')
     return redirect(request.referrer or url_for('dashboard'))
+
+# основные маршруты 
 
 @app.route('/dashboard')
 @login_required
@@ -917,6 +939,8 @@ def settings():
                          company_email=Setting.get('company_email', 'info@karman-prorab.ru'),
                          company_inn=Setting.get('company_inn', ''))
 
+# PDF и экспорт 
+
 @app.route('/project/<int:project_id>/estimate/pdf')
 @login_required
 def project_estimate_pdf(project_id):
@@ -1045,6 +1069,92 @@ def preview_pdf(project_id):
     
     return jsonify({'html': html_content})
 
+# загрузка шаблонов 
+
+@app.route('/project/<int:project_id>/upload_template', methods=['POST'])
+@login_required
+def upload_template(project_id):
+    project = Project.query.get_or_404(project_id)
+    if project.user_id != current_user.id:
+        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+    
+    template_name = request.form.get('template_name')
+    file = request.files.get('template_file')
+    apply_to_project = request.form.get('apply_to_project') == 'on'
+    
+    if not file or not template_name:
+        return jsonify({'success': False, 'message': 'Название шаблона и файл обязательны'})
+    
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': 'Недопустимый формат файла. Поддерживаются .xlsx и .csv'})
+    
+    # сохраняем файл шаблона
+    original_name = secure_filename(file.filename)
+    filename = f"template_{current_user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_name}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER_TEMPLATES'], filename)
+    file.save(filepath)
+    
+    # сохраняем запись о шаблоне в БД
+    template = Template(
+        user_id=current_user.id,
+        name=template_name,
+        filename=filename
+    )
+    db.session.add(template)
+    db.session.commit()
+    
+    # если нужно применить к текущему проекту
+    if apply_to_project:
+        try:
+            # загружаем Excel и добавляем услуги в проект
+            wb = load_workbook(filepath)
+            ws = wb.active
+            
+            added_count = 0
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row[0] or not row[1] or not row[2]:
+                    continue
+                
+                service_name = str(row[0]).strip()
+                unit = str(row[1]).strip()
+                price = float(row[2])
+                
+                # Проверяем, есть ли уже такая услуга
+                existing_service = Service.query.filter_by(
+                    name=service_name, 
+                    unit=unit,
+                    work_price=price
+                ).first()
+                
+                if not existing_service:
+                    existing_service = Service(
+                        name=service_name,
+                        unit=unit,
+                        work_price=price,
+                        material_price=0
+                    )
+                    db.session.add(existing_service)
+                    db.session.commit()
+                
+                # Добавляем работу в проект
+                work = ProjectWork(
+                    project_id=project.id,
+                    service_id=existing_service.id,
+                    quantity=1,
+                    total_price=price
+                )
+                db.session.add(work)
+                added_count += 1
+            
+            db.session.commit()
+            return jsonify({'success': True, 'applied': True, 'added_count': added_count})
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Ошибка при применении шаблона: {str(e)}'})
+    
+    return jsonify({'success': True, 'applied': False})
+
+# EXCEL
+
 @app.route('/project/<int:project_id>/export_excel')
 @login_required
 def export_excel(project_id):
@@ -1156,6 +1266,8 @@ def export_excel(project_id):
     
     return send_file(output, as_attachment=True, download_name=f'Смета_{project.name}.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+# фото чеков 
+
 @app.route('/expense/<int:expense_id>/add_photo', methods=['POST'])
 @login_required
 def add_expense_photo(expense_id):
@@ -1197,6 +1309,8 @@ def delete_expense_photo(photo_id):
     db.session.delete(photo)
     db.session.commit()
     return jsonify({'success': True})
+
+# фото проектов 
 
 @app.route('/project/<int:project_id>/add_photo', methods=['POST'])
 @login_required
@@ -1252,6 +1366,8 @@ def get_project_photo(photo_id):
         return redirect(url_for('projects'))
     
     return send_file(os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath), mimetype='image/jpeg')
+
+# AJAX маршруты 
 
 @app.route('/project/<int:project_id>/autosave', methods=['POST'])
 @login_required
@@ -1503,6 +1619,8 @@ def update_work_ajax(project_id, work_id):
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
+# поиск с подсказками 
+
 @app.route('/api/search-projects')
 @login_required
 def search_projects_api():
@@ -1529,6 +1647,9 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 print("=== APP INITIALIZED SUCCESSFULLY ===", flush=True)
+
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

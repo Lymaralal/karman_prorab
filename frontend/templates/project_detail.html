@@ -4,23 +4,30 @@
 
 {% block content %}
 
-<!-- кнопки -->
+<!-- Только кнопка Сохранить -->
+<div class="d-flex justify-content-end mb-3">
+    <button type="submit" form="mainForm" class="btn btn-primary btn-sm">
+        <i class="bi bi-save"></i> Сохранить все изменения
+    </button>
+</div>
+
 <form id="mainForm" method="POST" onsubmit="return saveAllData(event)">
     <input type="hidden" name="active_tab" id="active_tab" value="estimate">
 
-    <ul class="nav nav-tabs mb-3" id="projectTabs" role="tablist">
+    <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#main" type="button" onclick="setActiveTab('main')">Основное</button></li>
         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#estimate" type="button" onclick="setActiveTab('estimate')">Смета</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#photos" type="button" onclick="setActiveTab('photos')">Фото проекта</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#export" type="button" onclick="setActiveTab('export')">📄 Предпросмотр и экспорт</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#photos" type="button" onclick="setActiveTab('photos')">Фото</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#files" type="button" onclick="setActiveTab('files')">Файлы</button></li>
     </ul>
 
     <div class="tab-content">
-        <!-- Основное -->
+        
+        <!-- ========== ВКЛАДКА ОСНОВНОЕ ========== -->
         <div class="tab-pane fade" id="main">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white"><h4 class="mb-0">Редактирование проекта</h4></div>
+                <div class="card-header" style="background: #2E7D32; color: white;"><h4 class="mb-0">Редактирование проекта</h4></div>
                 <div class="card-body">
                     <div class="mb-3"><label>Название объекта:</label><input type="text" name="name" value="{{ project.name }}" class="form-control" required></div>
                     <div class="row mb-3">
@@ -43,6 +50,14 @@
                         <div class="col-md-4"><label>Плановая дата окончания:</label><input type="date" name="end_date" id="end_date" value="{{ timeline.end_date if timeline else '' }}" class="form-control"></div>
                         <div class="col-md-4"><label>Фактическая дата окончания:</label><input type="date" name="actual_end_date" id="actual_end_date" value="{{ project.actual_end_date or '' }}" class="form-control"></div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Режим сметы</label>
+                        <select name="estimate_mode" id="estimate_mode" class="form-select">
+                            <option value="client_no_materials" {% if project.estimate_mode == 'client_no_materials' %}selected{% endif %}>Для клиента (без материалов)</option>
+                            <option value="client_with_materials" {% if project.estimate_mode == 'client_with_materials' %}selected{% endif %}>Для клиента (под ключ)</option>
+                            <option value="internal" {% if project.estimate_mode == 'internal' %}selected{% endif %}>Для себя (внутренняя)</option>
+                        </select>
+                    </div>
                     <div class="text-center mt-4">
                         <label class="fw-bold">Прогресс выполнения</label>
                         <div class="progress-circle mx-auto" style="--progress: {{ progress }}; --progress-color: {{ progress_color }};">
@@ -55,12 +70,16 @@
                 </div>
             </div>
         </div>
-
-        <!-- Смета -->
+        
+        <!-- ========== ВКЛАДКА СМЕТА ========== -->
         <div class="tab-pane fade show active" id="estimate">
+            
+            <!-- Быстрое добавление услуги -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white"><h5 class="mb-0">Быстрое добавление услуги</h5></div>
-                <div class="card-body">
+                <div class="card-header" style="background: #2E7D32; color: white;">
+                    <h5 class="mb-0">Быстрое добавление услуги</h5>
+                </div>
+                <div class="card-body" style="background: #f8f9fa;">
                     <div class="row g-2">
                         <div class="col-md-5"><select id="new_service_id" class="form-select"><option value="">Выберите услугу</option>{% for service in services %}<option value="{{ service.id }}" data-work-price="{{ service.work_price }}" data-material-price="{{ service.material_price }}" data-unit="{{ service.unit }}">{{ service.name }} ({{ service.unit }})</option>{% endfor %}</select></div>
                         <div class="col-md-4"><input type="number" step="0.01" id="new_quantity" class="form-control" placeholder="Количество" value="1"></div>
@@ -69,15 +88,16 @@
                 </div>
             </div>
 
+            <!-- Добавить из шаблона -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">
+                <div class="card-header" style="background: #17a2b8; color: white;">
                     <h5 class="mb-0">
                         Добавить из шаблона
                         <button type="button" class="btn btn-sm btn-light float-end" id="toggleTemplatesBtn">Показать</button>
                     </h5>
                 </div>
                 <div id="templatesBlock" style="display: none;">
-                    <div class="card-body">
+                    <div class="card-body" style="background: #f8f9fa;">
                         <div class="row g-2">
                             <div class="col-md-5"><select id="categorySelect" class="form-select"><option value="">Выберите категорию</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></div>
                             <div class="col-md-5"><select id="productSelect" class="form-select" disabled><option value="">Сначала выберите категорию</option></select></div>
@@ -87,169 +107,242 @@
                 </div>
             </div>
 
-            <!-- смета работ (доход) -->
+            <!-- СМЕТА РАБОТ (доход) -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white"><h5 class="mb-0">Смета работ (доход)</h5></div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="table-success">
-                                <tr>
-                                    <th>Работа</th>
-                                    <th>Количество</th>
-                                    <th>Цена под ключ</th>
-                                    <th>Сумма</th>
-                                    <th style="width: 90px;" class="text-center">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="works-table-body">
-                                {% for work in works %}
-                                {% set work_price = work.custom_work_price if work.custom_work_price else work.service.work_price %}
-                                {% set material_price = work.custom_material_price if work.custom_material_price else work.service.material_price %}
-                                <tr id="work-row-{{ work.id }}">
-                                    <td class="work-name-display" data-work-id="{{ work.id }}">{{ work.custom_name if work.custom_name else work.service.name }}</td>
-                                    <td class="text-nowrap">
-                                        <span class="work-qty-display" data-work-id="{{ work.id }}">{{ work.quantity | format_number }}</span>
-                                        <span class="ms-1">{{ work.service.unit }}</span>
-                                    </td>
-                                    <td class="text-nowrap">
-                                        <span class="work-price-display" data-work-id="{{ work.id }}">{{ (work_price + material_price) | format_number }}</span>&nbsp;руб
-                                    </tr>
-                                    <td class="work-total text-nowrap">{{ work.total_price | format_number }}&nbsp;руб</a>
-                                    <td class="text-center">
-                                        <div class="action-buttons">
-                                            <button type="button" class="btn btn-sm btn-outline-primary edit-work-btn" data-work-id="{{ work.id }}" data-work-name="{{ work.custom_name if work.custom_name else work.service.name }}" data-work-qty="{{ work.quantity }}" data-work-price="{{ work_price + material_price }}" data-work-unit="{{ work.service.unit }}">✏️</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-work-btn" data-work-id="{{ work.id }}">✖️</button>
-                                        </div>
-                                    </a>
+                <div class="card-header" style="background: #2E7D32; color: white;">
+                    <h5 class="mb-0">Смета работ (доход)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Работа</th>
+                                <th class="text-end">Количество</th>
+                                <th class="text-end">Цена под ключ</th>
+                                <th class="text-end">Сумма</th>
+                                <th style="width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work in works %}
+                            {% set work_price = work.custom_work_price if work.custom_work_price else work.service.work_price %}
+                            {% set material_price = work.custom_material_price if work.custom_material_price else work.service.material_price %}
+                            <tr id="work-row-{{ work.id }}">
+                                <td class="work-name-display">{{ work.custom_name if work.custom_name else work.service.name }}</td>
+                                <td class="text-end text-nowrap">
+                                    {{ work.quantity | format_number }} {{ work.service.unit }}
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    {{ (work_price + material_price) | format_number }} руб
+                                </td>
+                                <td class="text-end text-nowrap">{{ work.total_price | format_number }} руб</a>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary edit-work-btn" data-work-id="{{ work.id }}"><i class="bi bi-pencil"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary delete-work-btn" data-work-id="{{ work.id }}"><i class="bi bi-trash"></i></button>
+                                    </div>
                                 </a>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot class="table-success fw-bold">
-                                <tr>
-                                    <td colspan="3" class="text-end">ИТОГО:</a>
-                                    <td id="total_income">{{ total | format_number }}&nbsp;руб</a>
-                                    <td></a>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                            </a>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-success mb-0" style="background: #d1e7dd; border-radius: 0;">
+                    <strong>Доход по смете: <span id="total_income">{{ total | format_number }}</span> руб</strong>
                 </div>
             </div>
 
-            <!-- расходы по проекту -->
+            <!-- РАСХОДЫ -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-danger text-white"><h5 class="mb-0">Расходы по проекту</h5></div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="table-danger">
-                                <tr>
-                                    <th>Наименование</th>
-                                    <th>Сумма, руб</th>
-                                    <th style="width: 80px;" class="text-center">Чек</th>
-                                    <th style="width: 90px;" class="text-center">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="expenses-table-body">
-                                {% for expense in expenses %}
-                                <tr id="expense-row-{{ expense.id }}">
-                                    <td class="expense-name-display" data-expense-id="{{ expense.id }}">{{ expense.name }}</a>
-                                    <td class="expense-amount-display" data-expense-id="{{ expense.id }}">{{ expense.amount | format_number }}</a>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-info toggle-photos-btn" data-expense-id="{{ expense.id }}" title="Показать чеки">
-                                            <i class="bi bi-camera"></i>
-                                        </button>
-                                    </a>
-                                    <td class="text-center">
-                                        <div class="action-buttons">
-                                            <button type="button" class="btn btn-sm btn-outline-primary edit-expense-btn" data-expense-id="{{ expense.id }}" data-current-name="{{ expense.name }}" data-current-amount="{{ expense.amount }}">✏️</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-expense-btn" data-expense-id="{{ expense.id }}">✖️</button>
-                                        </div>
-                                    </a>
-                                </a>
-                                <tr id="expense-photos-row-{{ expense.id }}" style="display: none;">
-                                    <td colspan="4" class="bg-light p-2">
-                                        <div id="expense-photos-{{ expense.id }}" class="d-flex flex-wrap gap-2">
-                                            {% for photo in expense.photos %}
-                                            <div class="position-relative" id="photo-{{ photo.id }}">
-                                                <img src="{{ url_for('static', filename='uploads/receipts/' + photo.filename) }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
-                                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 delete-photo-btn" data-photo-id="{{ photo.id }}" style="border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 10px;">×</button>
-                                            </div>
-                                            {% endfor %}
-                                            <form class="upload-photo-form" data-expense-id="{{ expense.id }}">
-                                                <input type="file" name="photo" accept="image/*" class="d-none photo-input" data-expense-id="{{ expense.id }}">
-                                                <button type="button" class="btn btn-sm btn-secondary trigger-upload" data-expense-id="{{ expense.id }}">+ Загрузить чек</button>
-                                            </form>
-                                        </div>
-                                    </a>
-                                </a>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot class="table-danger fw-bold">
-                                <tr>
-                                    <td colspan="3" class="text-end">ВСЕГО РАСХОДОВ:</a>
-                                    <td id="total_expenses">{{ total_expenses | format_number }}&nbsp;руб</a>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                <div class="card-header" style="background: #dc3545; color: white;">
+                    <h5 class="mb-0">Расходы по проекту</h5>
                 </div>
-                <div class="card-footer py-2">
-                    <div class="row g-2">
-                        <div class="col-md-5"><input type="text" id="new_expense_name" class="form-control form-control-sm" placeholder="Новый расход"></div>
-                        <div class="col-md-4"><input type="number" step="0.01" id="new_expense_amount" class="form-control form-control-sm" placeholder="Сумма"></div>
-                        <div class="col-md-3"><button type="button" id="addExpenseBtn" class="btn btn-danger btn-sm w-100">+ Добавить</button></div>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Наименование</th>
+                                <th class="text-end">Сумма, руб</th>
+                                <th style="width: 100px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr id="expense-row-{{ expense.id }}">
+                                <td class="expense-name-display">{{ expense.name }}</a>
+                                <td class="text-end">{{ expense.amount | format_number }}</a>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary toggle-photos-btn" data-expense-id="{{ expense.id }}"><i class="bi bi-camera"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary edit-expense-btn" data-expense-id="{{ expense.id }}"><i class="bi bi-pencil"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary delete-expense-btn" data-expense-id="{{ expense.id }}"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </a>
+                            </a>
+                            <tr id="expense-photos-row-{{ expense.id }}" style="display: none;">
+                                <td colspan="3" class="bg-light p-2">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        {% for photo in expense.photos %}
+                                        <div class="position-relative">
+                                            <img src="{{ url_for('static', filename='uploads/receipts/' + photo.filename) }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
+                                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 delete-photo-btn" data-photo-id="{{ photo.id }}" style="width: 18px; height: 18px; font-size: 10px; padding: 0;">×</button>
+                                        </div>
+                                        {% endfor %}
+                                        <form class="upload-photo-form d-inline">
+                                            <input type="file" accept="image/*" class="d-none photo-input" data-expense-id="{{ expense.id }}">
+                                            <button type="button" class="btn btn-sm btn-secondary trigger-upload" data-expense-id="{{ expense.id }}">+ Добавить чек</button>
+                                        </form>
+                                    </div>
+                                </a>
+                            </a>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-danger mb-0" style="background: #f8d7da; border-radius: 0;">
+                    <strong>Всего расходов: <span id="total_expenses">{{ total_expenses | format_number }}</span> руб</strong>
                 </div>
             </div>
 
-            <!-- список покупок -->
+            <!-- СПИСОК ПОКУПОК -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white"><h5 class="mb-0">Список покупок</h5></div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="table-info">
-                                <tr>
-                                    <th style="width: 40px;"></th>
-                                    <th>Наименование</th>
-                                    <th>Кол-во</th>
-                                    <th style="width: 90px;" class="text-center">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="purchases-table-body">
-                                {% for purchase in purchases %}
-                                <tr id="purchase-row-{{ purchase.id }}">
-                                    <td class="text-center"><input type="checkbox" class="purchase-checkbox" data-purchase-id="{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}></a>
-                                    <td><span class="purchase-name" {% if purchase.is_purchased %}style="text-decoration: line-through;"{% endif %}>{{ purchase.name }}</span></a>
-                                    <td><input type="number" class="form-control form-control-sm purchase-quantity" data-purchase-id="{{ purchase.id }}" value="{{ purchase.quantity }}" style="width: 80px; display: inline-block;"> <span class="small text-muted">шт</span></a>
-                                    <td class="text-center">
-                                        <div class="action-buttons">
-                                            <button type="button" class="btn btn-sm btn-outline-primary edit-purchase-btn" data-purchase-id="{{ purchase.id }}" data-purchase-name="{{ purchase.name }}" data-purchase-quantity="{{ purchase.quantity }}">✏️</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-purchase-btn" data-purchase-id="{{ purchase.id }}">✖️</button>
-                                        </div>
-                                    </a>
-                                </a>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-header" style="background: #17a2b8; color: white;">
+                    <h5 class="mb-0">Список покупок</h5>
                 </div>
-                <div class="card-footer py-2">
-                    <div class="row g-2">
-                        <div class="col-md-6"><input type="text" id="new_purchase_name" class="form-control form-control-sm" placeholder="Что нужно купить?"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>Наименование</th>
+                                <th class="text-end">Кол-во</th>
+                                <th style="width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in purchases %}
+                            <tr id="purchase-row-{{ purchase.id }}">
+                                <td class="text-center"><input type="checkbox" class="purchase-checkbox" data-purchase-id="{{ purchase.id }}" {% if purchase.is_purchased %}checked{% endif %}></a>
+                                <td class="purchase-name" {% if purchase.is_purchased %}style="text-decoration: line-through;"{% endif %}>{{ purchase.name }}</a>
+                                <td class="text-end text-nowrap">
+                                    {{ purchase.quantity }} шт
+                                </a>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary edit-purchase-btn" data-purchase-id="{{ purchase.id }}"><i class="bi bi-pencil"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary delete-purchase-btn" data-purchase-id="{{ purchase.id }}"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </a>
+                            </a>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white py-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5"><input type="text" id="new_purchase_name" class="form-control form-control-sm" placeholder="Что нужно купить?"></div>
                         <div class="col-md-3"><input type="number" id="new_purchase_quantity" class="form-control form-control-sm" placeholder="Кол-во" value="1"></div>
-                        <div class="col-md-3"><button type="button" id="addPurchaseBtn" class="btn btn-info btn-sm w-100">+ Добавить</button></div>
+                        <div class="col-md-4"><button type="button" id="addPurchaseBtn" class="btn btn-primary btn-sm w-100">+ Добавить</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ИТОГОВАЯ ПРИБЫЛЬ -->
+            {% set profit = total - total_expenses %}
+            {% if profit != 0 %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background: #343a40; color: white;">
+                    <h5 class="mb-0">💰 Итоговая прибыль</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h3 class="{% if profit > 0 %}text-success{% elif profit < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                        {% if profit > 0 %}📈 {% endif %}{{ profit | format_number }} руб
+                    </h3>
+                    <p class="text-muted mb-0">
+                        Доход (💰 <span class="text-success">{{ total | format_number }}</span> руб) — Расходы (📉 <span class="text-danger">{{ total_expenses | format_number }}</span> руб)
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ========== ВКЛАДКА ПРЕДПРОСМОТР И ЭКСПОРТ ========== -->
+        <div class="tab-pane fade" id="export">
+            <div class="card shadow-sm">
+                <div class="card-header" style="background: #343a40; color: white;">
+                    <h5 class="mb-0"><i class="bi bi-printer"></i> Предпросмотр и экспорт сметы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Режим сметы</label>
+                            <select id="pdfModeSelect" class="form-select">
+                                <option value="full">📄 Коммерческое предложение (полное)</option>
+                                <option value="short">📋 Коммерческое предложение (краткое)</option>
+                                <option value="internal">🏢 Смета для себя (внутренняя)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Юридическое лицо</label>
+                            <select id="pdfEntitySelect" class="form-select">
+                                <option value="">-- Выберите юр. лицо --</option>
+                                {% for entity in current_user.legal_entities %}
+                                <option value="{{ entity.id }}" {% if session.current_entity_id == entity.id %}selected{% endif %}>
+                                    {{ entity.name }} ({{ entity.inn }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Фото для вставки в PDF</label>
+                        <div class="row g-2" id="pdfPhotosSelection">
+                            {% set all_photos = project.photos|list %}
+                            {% if all_photos %}
+                                {% for photo in all_photos %}
+                                <div class="col-md-2 col-sm-3 col-4">
+                                    <div class="border rounded p-1 text-center">
+                                        <img src="{{ url_for('static', filename='uploads/project_photos/' + photo.filename) }}" class="img-fluid" style="height: 80px; object-fit: cover; border-radius: 8px;">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input pdf-photo-checkbox" type="checkbox" value="{{ photo.id }}" id="photo_{{ photo.id }}">
+                                            <label class="form-check-label small" for="photo_{{ photo.id }}">Вставить</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12 text-muted">Нет загруженных фото</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Предпросмотр сметы</label>
+                        <div class="table-responsive border rounded p-2 bg-light" id="pdfPreview" style="max-height: 400px; overflow-y: auto;">
+                            <div class="text-center text-muted py-5">Выберите режим сметы для предпросмотра</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" id="previewBtn" class="btn btn-info btn-sm">
+                            <i class="bi bi-eye"></i> Обновить предпросмотр
+                        </button>
+                        <button type="button" id="downloadPdfBtn" class="btn btn-danger btn-sm">
+                            <i class="bi bi-file-pdf"></i> Скачать PDF
+                        </button>
+                        <a href="/project/{{ project.id }}/export_excel" id="downloadExcelBtn" class="btn btn-success btn-sm">
+                            <i class="bi bi-file-excel"></i> Скачать Excel
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- фото проекта -->
+        <!-- ========== ВКЛАДКА ФОТО ========== -->
         <div class="tab-pane fade" id="photos">
             <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
+                <div class="card-header" style="background: #6c757d; color: white;">
                     <h5 class="mb-0"><i class="bi bi-images"></i> Фотогалерея проекта</h5>
                 </div>
                 <div class="card-body">
@@ -260,7 +353,7 @@
                                 <div class="col-md-4">
                                     <select name="photo_type" id="photo_type" class="form-select" required>
                                         <option value="before">📸 До начала работ</option>
-                                        <option value="progress">🔄 Прогресс (в процессе)</option>
+                                        <option value="progress">🔄 Прогресс</option>
                                         <option value="after">✅ После завершения</option>
                                     </select>
                                 </div>
@@ -271,9 +364,7 @@
                                     <input type="file" name="photo" id="project_photo_input" accept="image/*" class="form-control" required>
                                 </div>
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-cloud-upload"></i> Загрузить фото
-                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-cloud-upload"></i> Загрузить</button>
                                 </div>
                             </form>
                         </div>
@@ -370,87 +461,10 @@
             </div>
         </div>
 
-        <!-- вкладка: предпросмотр и экспорт -->
-        <div class="tab-pane fade" id="export">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0"><i class="bi bi-printer"></i> Предпросмотр и экспорт сметы</h5>
-                </div>
-                <div class="card-body">
-                    <!-- выбор режима сметы -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Режим сметы</label>
-                            <select id="pdfModeSelect" class="form-select">
-                                <option value="full">📄 Коммерческое предложение (полное)</option>
-                                <option value="short">📋 Коммерческое предложение (краткое)</option>
-                                <option value="internal">🏢 Смета для себя (внутренняя)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Юридическое лицо</label>
-                            <select id="pdfEntitySelect" class="form-select">
-                                <option value="">-- Выберите юр. лицо --</option>
-                                {% for entity in current_user.legal_entities %}
-                                <option value="{{ entity.id }}" {% if session.current_entity_id == entity.id %}selected{% endif %}>
-                                    {{ entity.name }} ({{ entity.inn }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- выбор фото для PDF -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Фото для вставки в PDF</label>
-                        <div class="row g-2" id="pdfPhotosSelection">
-                            {% set all_photos = project.photos|list %}
-                            {% if all_photos %}
-                                {% for photo in all_photos %}
-                                <div class="col-md-2 col-sm-3 col-4">
-                                    <div class="border rounded p-1 text-center">
-                                        <img src="{{ url_for('static', filename='uploads/project_photos/' + photo.filename) }}" class="img-fluid" style="height: 80px; object-fit: cover; border-radius: 8px;">
-                                        <div class="form-check mt-1">
-                                            <input class="form-check-input pdf-photo-checkbox" type="checkbox" value="{{ photo.id }}" id="photo_{{ photo.id }}">
-                                            <label class="form-check-label small" for="photo_{{ photo.id }}">Вставить</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="col-12 text-muted">Нет загруженных фото</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- предпросмотр (простая таблица) -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Предпросмотр сметы</label>
-                        <div class="table-responsive border rounded p-2 bg-light" id="pdfPreview" style="max-height: 400px; overflow-y: auto;">
-                            <div class="text-center text-muted py-5">Выберите режим сметы для предпросмотра</div>
-                        </div>
-                    </div>
-
-                    <!-- кнопки экспорта -->
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" id="previewBtn" class="btn btn-info btn-sm">
-                            <i class="bi bi-eye"></i> Обновить предпросмотр
-                        </button>
-                        <button type="button" id="downloadPdfBtn" class="btn btn-danger btn-sm">
-                            <i class="bi bi-file-pdf"></i> Скачать PDF
-                        </button>
-                        <a href="/project/{{ project.id }}/export_excel" id="downloadExcelBtn" class="btn btn-success btn-sm">
-                            <i class="bi bi-file-excel"></i> Скачать Excel
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- файлы -->
+        <!-- ========== ВКЛАДКА ФАЙЛЫ ========== -->
         <div class="tab-pane fade" id="files">
             <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white"><h5 class="mb-0">Файлы проекта</h5></div>
+                <div class="card-header" style="background: #6c757d; color: white;"><h5 class="mb-0">Файлы проекта</h5></div>
                 <div class="card-body text-center text-muted">
                     <p>Здесь можно будет загружать договоры, сметы, документы.</p>
                     <p>Функция в разработке</p>
@@ -460,11 +474,11 @@
     </div>
 </form>
 
-<!-- модальные окна -->
+<!-- ========== МОДАЛЬНЫЕ ОКНА ========== -->
 <div class="modal fade" id="editWorkModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header" style="background: #2E7D32; color: white;">
                 <h5 class="modal-title">✏️ Редактирование работы</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -491,7 +505,7 @@
 <div class="modal fade" id="editExpenseModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header" style="background: #dc3545; color: white;">
                 <h5 class="modal-title">✏️ Редактирование расхода</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -511,7 +525,7 @@
 <div class="modal fade" id="editPurchaseModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header" style="background: #17a2b8; color: white;">
                 <h5 class="modal-title">✏️ Редактирование покупки</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -529,88 +543,57 @@
 </div>
 
 <style>
-/* кнопки действий */
+.progress-circle {
+    width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    position: relative; margin: 0 auto;
+    background: conic-gradient(var(--progress-color) 0deg, var(--progress-color) calc(var(--progress) * 3.6deg), #e9ecef calc(var(--progress) * 3.6deg), #e9ecef 360deg);
+}
+.progress-circle::before { content: ""; position: absolute; width: 80px; height: 80px; background: white; border-radius: 50%; }
+.progress-text { position: relative; font-size: 24px; font-weight: bold; z-index: 1; }
+
 .action-buttons {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     justify-content: center;
     align-items: center;
 }
 .action-buttons .btn {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
 }
 .action-buttons .btn:hover {
     transform: translateY(-1px);
 }
-
-/* Прогресс-круг */
-.progress-circle {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    background: conic-gradient(var(--progress-color) 0deg, var(--progress-color) calc(var(--progress) * 3.6deg), #e9ecef calc(var(--progress) * 3.6deg), #e9ecef 360deg);
+.table th, .table td {
+    vertical-align: middle;
+    padding: 10px 12px;
 }
-.progress-circle::before {
-    content: "";
-    position: absolute;
-    width: 80px;
-    height: 80px;
-    background: white;
-    border-radius: 50%;
-}
-.progress-text {
-    position: relative;
-    font-size: 24px;
-    font-weight: bold;
-    z-index: 1;
-}
-
-/* карточки */
-.card {
-    border: none;
-    border-radius: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-}
-.card-header {
+.table th {
     font-weight: 600;
-    border: none;
-    padding: 16px 20px;
+    font-size: 13px;
 }
-.table-bordered {
-    border: 1px solid #dee2e6;
+.table td {
+    font-size: 13px;
 }
-
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+.table-light th {
+    background-color: #f8f9fa !important;
+}
 @media (max-width: 768px) {
-    .progress-circle {
-        width: 70px;
-        height: 70px;
-    }
-    .progress-circle::before {
-        width: 56px;
-        height: 56px;
-    }
-    .progress-text {
-        font-size: 16px;
-    }
-    .action-buttons .btn {
-        width: 28px;
-        height: 28px;
-        font-size: 12px;
-    }
-    .table th, .table td {
-        padding: 10px 8px;
-    }
+    .progress-circle { width: 70px; height: 70px; }
+    .progress-circle::before { width: 56px; height: 56px; }
+    .progress-text { font-size: 16px; }
+    .action-buttons .btn { width: 26px; height: 26px; font-size: 12px; }
+    .table th, .table td { padding: 8px 10px; }
 }
 </style>
 
@@ -658,25 +641,15 @@ function showNotification(message, type) {
     notification.style.minWidth = '250px';
     notification.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
     document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(() => notification.remove(), 3000);
 }
 
 function updateTotals() {
     fetch(`/project/{{ project.id }}/get_totals`)
         .then(r => r.json())
         .then(totals => {
-            document.getElementById('total_income').innerText = formatNumber(totals.total_income) + ' руб';
-            document.getElementById('total_expenses').innerText = formatNumber(totals.total_expenses) + ' руб';
-            document.getElementById('total_income_display').innerText = formatNumber(totals.total_income);
-            document.getElementById('total_expenses_display').innerText = formatNumber(totals.total_expenses);
-            let profitElem = document.getElementById('profit');
-            profitElem.innerHTML = '💰 ' + formatNumber(totals.profit) + '&nbsp;руб';
-            if (totals.profit > 0) profitElem.className = 'text-success';
-            else if (totals.profit < 0) profitElem.className = 'text-danger';
-            else profitElem.className = 'text-secondary';
+            document.getElementById('total_income').innerText = formatNumber(totals.total_income);
+            document.getElementById('total_expenses').innerText = formatNumber(totals.total_expenses);
         });
 }
 
@@ -688,29 +661,17 @@ function saveAllData(event) {
     data.active_tab = document.getElementById('active_tab').value;
 
     fetch(`/project/{{ project.id }}/save_all_ajax`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     })
     .then(r => r.json())
     .then(response => {
         if (response.success) {
-            showNotification('✅ Все изменения сохранены', 'success');
+            showNotification('✅ Сохранено', 'success');
             updateTotals();
             if (response.progress !== undefined) {
-                const circle = document.querySelector('.progress-circle');
-                const text = document.querySelector('.progress-text');
-                if (circle && text) {
-                    text.innerText = response.progress + '%';
-                    let color = '#198754';
-                    if (response.progress < 30) color = '#dc3545';
-                    else if (response.progress < 50) color = '#fd7e14';
-                    else if (response.progress < 70) color = '#ffc107';
-                    else if (response.progress < 90) color = '#20c997';
-                    else color = '#198754';
-                    circle.style.setProperty('--progress', response.progress);
-                    circle.style.setProperty('--progress-color', color);
-                }
+                const progressText = document.querySelector('.progress-text');
+                if (progressText) progressText.innerText = response.progress + '%';
             }
         } else showNotification('❌ Ошибка: ' + response.message, 'danger');
     })
@@ -723,7 +684,7 @@ function reloadWithTab() {
     location.reload();
 }
 
-// добавление работы
+// Добавление
 document.getElementById('addWorkBtn')?.addEventListener('click', function() {
     let serviceId = document.getElementById('new_service_id').value;
     let quantity = document.getElementById('new_quantity').value;
@@ -731,45 +692,40 @@ document.getElementById('addWorkBtn')?.addEventListener('click', function() {
     if (!quantity || quantity <= 0) { alert('Введите корректное количество'); return; }
 
     fetch(`/project/{{ project.id }}/add_work_ajax`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service_id: parseInt(serviceId), quantity: parseFloat(quantity) })
     })
     .then(r => r.json())
     .then(data => { if (data.success) reloadWithTab(); else alert('Ошибка: ' + data.message); });
 });
 
-// добавление расхода
 document.getElementById('addExpenseBtn')?.addEventListener('click', function() {
     let name = document.getElementById('new_expense_name').value;
     let amount = document.getElementById('new_expense_amount').value;
-    if (!name || !amount) { alert('Заполните название и сумму расхода'); return; }
+    if (!name || !amount) { alert('Заполните название и сумму'); return; }
 
     fetch(`/project/{{ project.id }}/add_expense_ajax`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name, amount: parseFloat(amount) })
     })
     .then(r => r.json())
     .then(data => { if (data.success) reloadWithTab(); else alert('Ошибка: ' + data.message); });
 });
 
-// добавление покупки
 document.getElementById('addPurchaseBtn')?.addEventListener('click', function() {
     let name = document.getElementById('new_purchase_name').value;
     let quantity = document.getElementById('new_purchase_quantity').value;
-    if (!name) { alert('Введите название покупки'); return; }
+    if (!name) { alert('Введите название'); return; }
 
     fetch(`/project/{{ project.id }}/add_purchase_ajax`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name, quantity: parseInt(quantity) || 1 })
     })
     .then(r => r.json())
     .then(data => { if (data.success) reloadWithTab(); else alert('Ошибка: ' + data.message); });
 });
 
-// редактирование работы
+// Редактирование
 document.addEventListener('click', function(e) {
     const editWorkBtn = e.target.closest('.edit-work-btn');
     if (editWorkBtn) {
@@ -789,49 +745,7 @@ document.addEventListener('click', function(e) {
         const modal = new bootstrap.Modal(document.getElementById('editWorkModal'));
         modal.show();
     }
-});
-
-document.getElementById('saveWorkEditBtn')?.addEventListener('click', function() {
-    const workId = document.getElementById('edit_work_id').value;
-    const newName = document.getElementById('edit_work_name').value;
-    const newQty = parseFloat(document.getElementById('edit_work_qty').value);
-    const newPrice = parseFloat(document.getElementById('edit_work_price').value);
-
-    if (!newName || isNaN(newQty) || newQty <= 0 || isNaN(newPrice) || newPrice <= 0) {
-        alert('Пожалуйста, заполните все поля корректно');
-        return;
-    }
-
-    fetch(`/project/{{ project.id }}/update_work_ajax/${workId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, quantity: newQty, price: newPrice })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const row = document.getElementById(`work-row-${workId}`);
-            if (row) {
-                row.querySelector('.work-name-display').innerText = newName;
-                row.querySelector('.work-qty-display').innerHTML = formatNumber(newQty) + ' <span class="ms-1">' + document.getElementById('edit_work_unit').innerText + '</span>';
-                row.querySelector('.work-price-display').innerHTML = formatNumber(newPrice) + '&nbsp;руб';
-                const total = newQty * newPrice;
-                row.querySelector('.work-total').innerHTML = formatNumber(total) + '&nbsp;руб';
-                const editBtn = row.querySelector('.edit-work-btn');
-                editBtn.setAttribute('data-work-name', newName);
-                editBtn.setAttribute('data-work-qty', newQty);
-                editBtn.setAttribute('data-work-price', newPrice);
-            }
-            bootstrap.Modal.getInstance(document.getElementById('editWorkModal')).hide();
-            updateTotals();
-            showNotification('✅ Работа обновлена', 'success');
-        } else alert('Ошибка: ' + data.message);
-    })
-    .catch(error => alert('Ошибка при сохранении'));
-});
-
-// редактирование расхода
-document.addEventListener('click', function(e) {
+    
     const editExpenseBtn = e.target.closest('.edit-expense-btn');
     if (editExpenseBtn) {
         e.preventDefault();
@@ -846,6 +760,60 @@ document.addEventListener('click', function(e) {
         const modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
         modal.show();
     }
+    
+    const editPurchaseBtn = e.target.closest('.edit-purchase-btn');
+    if (editPurchaseBtn) {
+        e.preventDefault();
+        const purchaseId = editPurchaseBtn.getAttribute('data-purchase-id');
+        const purchaseName = editPurchaseBtn.getAttribute('data-purchase-name');
+        const purchaseQuantity = editPurchaseBtn.getAttribute('data-purchase-quantity');
+
+        document.getElementById('edit_purchase_id').value = purchaseId;
+        document.getElementById('edit_purchase_name').value = purchaseName;
+        document.getElementById('edit_purchase_quantity').value = purchaseQuantity;
+
+        const modal = new bootstrap.Modal(document.getElementById('editPurchaseModal'));
+        modal.show();
+    }
+});
+
+// Сохранение редактирования
+document.getElementById('saveWorkEditBtn')?.addEventListener('click', function() {
+    const workId = document.getElementById('edit_work_id').value;
+    const newName = document.getElementById('edit_work_name').value;
+    const newQty = parseFloat(document.getElementById('edit_work_qty').value);
+    const newPrice = parseFloat(document.getElementById('edit_work_price').value);
+
+    if (!newName || isNaN(newQty) || newQty <= 0 || isNaN(newPrice) || newPrice <= 0) {
+        alert('Заполните все поля');
+        return;
+    }
+
+    fetch(`/project/{{ project.id }}/update_work_ajax/${workId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, quantity: newQty, price: newPrice })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.getElementById(`work-row-${workId}`);
+            if (row) {
+                row.querySelector('.work-name-display').innerText = newName;
+                row.querySelector('.work-qty-display').innerHTML = formatNumber(newQty);
+                row.querySelector('.work-price-display').innerHTML = formatNumber(newPrice);
+                const total = newQty * newPrice;
+                row.querySelector('.work-total').innerHTML = formatNumber(total);
+                const editBtn = row.querySelector('.edit-work-btn');
+                editBtn.setAttribute('data-work-name', newName);
+                editBtn.setAttribute('data-work-qty', newQty);
+                editBtn.setAttribute('data-work-price', newPrice);
+            }
+            bootstrap.Modal.getInstance(document.getElementById('editWorkModal')).hide();
+            updateTotals();
+            showNotification('✅ Работа обновлена', 'success');
+        } else alert('Ошибка: ' + data.message);
+    })
+    .catch(error => alert('Ошибка при сохранении'));
 });
 
 document.getElementById('saveExpenseEditBtn')?.addEventListener('click', function() {
@@ -854,19 +822,17 @@ document.getElementById('saveExpenseEditBtn')?.addEventListener('click', functio
     const newAmount = parseFloat(document.getElementById('edit_expense_amount').value);
 
     if (!newName || isNaN(newAmount) || newAmount <= 0) {
-        alert('Пожалуйста, заполните все поля корректно');
+        alert('Заполните все поля');
         return;
     }
 
     Promise.all([
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `expense_name_${expenseId}`, value: newName })
         }),
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `expense_amount_${expenseId}`, value: newAmount })
         })
     ])
@@ -886,43 +852,23 @@ document.getElementById('saveExpenseEditBtn')?.addEventListener('click', functio
     .catch(error => alert('Ошибка при сохранении'));
 });
 
-// редактирование покупки
-document.addEventListener('click', function(e) {
-    const editPurchaseBtn = e.target.closest('.edit-purchase-btn');
-    if (editPurchaseBtn) {
-        e.preventDefault();
-        const purchaseId = editPurchaseBtn.getAttribute('data-purchase-id');
-        const purchaseName = editPurchaseBtn.getAttribute('data-purchase-name');
-        const purchaseQuantity = editPurchaseBtn.getAttribute('data-purchase-quantity');
-
-        document.getElementById('edit_purchase_id').value = purchaseId;
-        document.getElementById('edit_purchase_name').value = purchaseName;
-        document.getElementById('edit_purchase_quantity').value = purchaseQuantity;
-
-        const modal = new bootstrap.Modal(document.getElementById('editPurchaseModal'));
-        modal.show();
-    }
-});
-
 document.getElementById('savePurchaseEditBtn')?.addEventListener('click', function() {
     const purchaseId = document.getElementById('edit_purchase_id').value;
     const newName = document.getElementById('edit_purchase_name').value;
     const newQuantity = parseInt(document.getElementById('edit_purchase_quantity').value);
 
     if (!newName || isNaN(newQuantity) || newQuantity <= 0) {
-        alert('Пожалуйста, заполните все поля корректно');
+        alert('Заполните все поля');
         return;
     }
 
     Promise.all([
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `purchase_name_${purchaseId}`, value: newName })
         }),
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `purchase_quantity_${purchaseId}`, value: newQuantity })
         })
     ])
@@ -930,7 +876,7 @@ document.getElementById('savePurchaseEditBtn')?.addEventListener('click', functi
         const row = document.getElementById(`purchase-row-${purchaseId}`);
         if (row) {
             row.querySelector('.purchase-name').innerText = newName;
-            row.querySelector('.purchase-quantity').value = newQuantity;
+            row.querySelector('.purchase-quantity').innerHTML = newQuantity;
             const editBtn = row.querySelector('.edit-purchase-btn');
             editBtn.setAttribute('data-purchase-name', newName);
             editBtn.setAttribute('data-purchase-quantity', newQuantity);
@@ -941,7 +887,7 @@ document.getElementById('savePurchaseEditBtn')?.addEventListener('click', functi
     .catch(error => alert('Ошибка при сохранении'));
 });
 
-// удаление
+// Удаление
 document.addEventListener('click', function(e) {
     const deleteWorkBtn = e.target.closest('.delete-work-btn');
     if (deleteWorkBtn) {
@@ -978,20 +924,9 @@ document.addEventListener('click', function(e) {
         }
         return;
     }
-    
-    const togglePhotosBtn = e.target.closest('.toggle-photos-btn');
-    if (togglePhotosBtn) {
-        e.preventDefault();
-        const expenseId = togglePhotosBtn.getAttribute('data-expense-id');
-        const photosRow = document.getElementById(`expense-photos-row-${expenseId}`);
-        if (photosRow) {
-            photosRow.style.display = photosRow.style.display === 'none' ? 'table-row' : 'none';
-        }
-        return;
-    }
 });
 
-// фото чеков
+// Фото
 document.querySelectorAll('.trigger-upload').forEach(btn => {
     btn.addEventListener('click', function() {
         const expenseId = this.getAttribute('data-expense-id');
@@ -1010,8 +945,7 @@ document.querySelectorAll('.photo-input').forEach(input => {
         formData.append('photo', file);
 
         fetch(`/expense/${expenseId}/add_photo`, {
-            method: 'POST',
-            body: formData
+            method: 'POST', body: formData
         })
         .then(r => r.json())
         .then(data => { if (data.success) reloadWithTab(); else alert('Ошибка: ' + data.message); });
@@ -1029,14 +963,12 @@ document.querySelectorAll('.delete-photo-btn').forEach(btn => {
     });
 });
 
-// фото проекта
 document.getElementById('addProjectPhotoForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
 
     fetch(`/project/{{ project.id }}/add_photo`, {
-        method: 'POST',
-        body: formData
+        method: 'POST', body: formData
     })
     .then(r => r.json())
     .then(data => { if (data.success) reloadWithTab(); else alert('Ошибка: ' + data.message); });
@@ -1053,18 +985,15 @@ document.querySelectorAll('.delete-project-photo-btn').forEach(btn => {
     });
 });
 
-// покупки
+// Покупки
 document.querySelectorAll('.purchase-checkbox').forEach(cb => {
     cb.addEventListener('change', function() {
         const purchaseId = this.getAttribute('data-purchase-id');
         const checked = this.checked;
         const nameSpan = this.closest('tr').querySelector('.purchase-name');
-        if (nameSpan) {
-            nameSpan.style.textDecoration = checked ? 'line-through' : 'none';
-        }
+        if (nameSpan) nameSpan.style.textDecoration = checked ? 'line-through' : 'none';
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `purchased_${purchaseId}`, value: checked })
         });
     });
@@ -1075,37 +1004,40 @@ document.querySelectorAll('.purchase-quantity').forEach(input => {
         const purchaseId = this.getAttribute('data-purchase-id');
         const newQty = this.value;
         fetch(`/project/{{ project.id }}/autosave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: `purchase_quantity_${purchaseId}`, value: parseInt(newQty) })
         });
     });
 });
 
-// режим сметы и даты
+// Режим сметы и даты
+document.getElementById('estimate_mode')?.addEventListener('change', function() {
+    fetch(`/project/{{ project.id }}/autosave`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'estimate_mode', value: this.value })
+    });
+});
+
 document.getElementById('start_date')?.addEventListener('change', function() {
     fetch(`/project/{{ project.id }}/autosave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field: 'start_date', value: this.value })
     });
 });
 document.getElementById('end_date')?.addEventListener('change', function() {
     fetch(`/project/{{ project.id }}/autosave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field: 'end_date', value: this.value })
     });
 });
 document.getElementById('actual_end_date')?.addEventListener('change', function() {
     fetch(`/project/{{ project.id }}/autosave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field: 'actual_end_date', value: this.value })
     });
 });
 
-// шаблоны
+// Шаблоны
 const categorySelect = document.getElementById('categorySelect');
 const productSelect = document.getElementById('productSelect');
 const addFromTemplateBtn = document.getElementById('addFromTemplateBtn');
@@ -1174,7 +1106,7 @@ if (categorySelect) {
     });
 }
 
-// предпросмотр и эскпорт PDF
+// Предпросмотр и экспорт PDF
 const pdfModeSelect = document.getElementById('pdfModeSelect');
 const pdfEntitySelect = document.getElementById('pdfEntitySelect');
 const previewBtn = document.getElementById('previewBtn');
@@ -1203,21 +1135,17 @@ function updatePreview() {
     });
 }
 
-if (previewBtn) {
-    previewBtn.addEventListener('click', updatePreview);
-}
-
+if (previewBtn) previewBtn.addEventListener('click', updatePreview);
 if (downloadPdfBtn) {
     downloadPdfBtn.addEventListener('click', function() {
         const mode = pdfModeSelect ? pdfModeSelect.value : 'full';
         const entityId = pdfEntitySelect ? pdfEntitySelect.value : '';
         const selectedPhotos = Array.from(document.querySelectorAll('.pdf-photo-checkbox:checked')).map(cb => cb.value);
-        
         window.open(`/project/{{ project.id }}/estimate/pdf?mode=${mode}&entity_id=${entityId}&photo_ids=${selectedPhotos.join(',')}`, '_blank');
     });
 }
 
-// прогресс
+// Прогресс
 document.querySelectorAll('.progress-circle').forEach(el => {
     let progress = parseInt(el.style.getPropertyValue('--progress'));
     let color = '#198754';

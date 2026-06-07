@@ -1,25 +1,20 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
-# Устанавливаем системные библиотеки для WeasyPrint
-RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libharfbuzz-subset0 \
-    libcairo2 \
-    libgdk-pixbuf-2.0-0 \
-    libglib2.0-0 \
-    libffi-dev \
-    shared-mime-info \
-    fonts-liberation \
-    && apt-get clean
-
-# Устанавливаем зависимости Python
 WORKDIR /app
+
+# Устанавливаем curl для healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем код
 COPY . .
 
-# Запускаем приложение
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "backend.app:app"]
+ENV PORT=8000
+EXPOSE $PORT
+
+# Healthcheck для Timeweb
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+CMD gunicorn --bind 0.0.0.0:8000 backend.app:app
