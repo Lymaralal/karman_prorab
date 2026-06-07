@@ -15,9 +15,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # пути для TIMEWEB
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(BASE_DIR, '../frontend/templates')
-STATIC_DIR = os.path.join(BASE_DIR, '../frontend/static')
+# Поднимаемся на уровень выше, где лежит папка frontend
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'templates')
+STATIC_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
@@ -26,9 +29,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 # настройки загрузки файлов
-UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads/receipts')
-UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads/project_photos')
-UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads/logo')
+UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads', 'receipts')
+UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads', 'project_photos')
+UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads', 'logo')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER_RECEIPTS'] = UPLOAD_FOLDER_RECEIPTS
@@ -54,7 +57,7 @@ ESTIMATE_MODES = ['client_no_materials', 'client_with_materials', 'internal']
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# модели 
+# модели
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -276,7 +279,11 @@ def get_progress_color(progress):
     if progress < 90: return '#20c997'
     return '#198754'
 
-# маршруты аутентификации
+# маршруты 
+
+@app.route('/health')
+def health():
+    return 'OK', 200
 
 @app.route('/')
 def index():
@@ -1039,7 +1046,7 @@ def preview_pdf(project_id):
     
     return jsonify({'html': html_content})
 
-#  EXCEL
+# EXCEL
 
 @app.route('/project/<int:project_id>/export_excel')
 @login_required
