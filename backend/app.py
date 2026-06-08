@@ -2,40 +2,50 @@ import os
 import re
 import io
 import tempfile
+import logging
 from datetime import datetime
+from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, session, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user, UserMixin
-from weasyprint import HTML
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-#пути для TIMEWEB
+# настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# пути для стабильной работы на любом хостинге
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'templates')
 STATIC_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'static')
 
-print(f"BASE_DIR: {BASE_DIR}", flush=True)
-print(f"PROJECT_ROOT: {PROJECT_ROOT}", flush=True)
-print(f"TEMPLATE_DIR: {TEMPLATE_DIR}", flush=True)
-print(f"STATIC_DIR: {STATIC_DIR}", flush=True)
+# нормализация путей
+TEMPLATE_DIR = os.path.abspath(TEMPLATE_DIR)
+STATIC_DIR = os.path.abspath(STATIC_DIR)
+
+# создаём папку для базы данных
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-# база данных 
-DB_PATH = os.path.join(tempfile.gettempdir(), 'karman_prorab.db')
+# конфигурация
+DB_PATH = os.path.join(INSTANCE_DIR, 'karman_prorab.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-in-production-secret-key-2024')
+app.config['PERMANENT_SESSION_LIFETIME'] = 30 * 24 * 3600  # 30 дней
+app.config['SESSION_COOKIE_SECURE'] = False  # Для HTTP (True для HTTPS)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-print(f"Database path: {DB_PATH}", flush=True)
-
-# загрузки
+# настройки загрузки файлов
 UPLOAD_FOLDER_RECEIPTS = os.path.join(STATIC_DIR, 'uploads', 'receipts')
 UPLOAD_FOLDER_PHOTOS = os.path.join(STATIC_DIR, 'uploads', 'project_photos')
 UPLOAD_FOLDER_LOGO = os.path.join(STATIC_DIR, 'uploads', 'logo')
@@ -46,27 +56,50 @@ app.config['UPLOAD_FOLDER_RECEIPTS'] = UPLOAD_FOLDER_RECEIPTS
 app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
 app.config['UPLOAD_FOLDER_LOGO'] = UPLOAD_FOLDER_LOGO
 app.config['UPLOAD_FOLDER_TEMPLATES'] = UPLOAD_FOLDER_TEMPLATES
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# создаём папки для загрузок
 os.makedirs(UPLOAD_FOLDER_RECEIPTS, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_PHOTOS, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_LOGO, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_TEMPLATES, exist_ok=True)
 
+# инициализация расширений
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Пожалуйста, войдите в систему'
 
+# константы
 PROJECT_STATUSES = ['На этапе согласования', 'В работе', 'Завершённые', 'Отложенные']
 ESTIMATE_MODES = ['client_no_materials', 'client_with_materials', 'internal']
 
+# проверка WeasyPrint
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+    logger.info("WeasyPrint доступен")
+except ImportError as e:
+    WEASYPRINT_AVAILABLE = False
+    logger.warning(f"WeasyPrint не доступен: {e}")
+    HTML = None
+
+# вспомогательные функции
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# модели
+def login_required_with_message(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Пожалуйста, войдите в систему для доступа к этой странице', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# модели бд 
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -118,6 +151,8 @@ class Project(db.Model):
     estimate_mode = db.Column(db.String(30), default='client_no_materials')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     legal_entity_id = db.Column(db.Integer, db.ForeignKey('legal_entity.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = db.relationship('User', backref='projects')
     legal_entity = db.relationship('LegalEntity', backref='projects')
@@ -133,8 +168,8 @@ class ProjectWork(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
-    quantity = db.Column(db.Float, nullable=False)
-    total_price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Float, nullable=False, default=1)
+    total_price = db.Column(db.Float, nullable=False, default=0)
     custom_work_price = db.Column(db.Float, nullable=True)
     custom_material_price = db.Column(db.Float, nullable=True)
     custom_total_price = db.Column(db.Float, nullable=True)
@@ -146,7 +181,7 @@ class Expense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0)
     project = db.relationship('Project', backref='expenses')
 
 class ExpensePhoto(db.Model):
@@ -191,7 +226,7 @@ class Product(db.Model):
 class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True, nullable=False)
-    value = db.Column(db.String(200), nullable=True)
+    value = db.Column(db.String(500), nullable=True)
 
     @staticmethod
     def get(key, default=''):
@@ -208,7 +243,6 @@ class Setting(db.Model):
             db.session.add(setting)
         db.session.commit()
 
-# модель: шаблоны смет
 class Template(db.Model):
     __tablename__ = 'template'
     id = db.Column(db.Integer, primary_key=True)
@@ -219,14 +253,15 @@ class Template(db.Model):
     
     user = db.relationship('User', backref='templates')
 
-# контекстные процессоры
+# контектсные процессоры
 
 @app.context_processor
 def inject_globals():
     return {
         'project_statuses': PROJECT_STATUSES, 
         'estimate_modes': ESTIMATE_MODES,
-        'LegalEntity': LegalEntity
+        'LegalEntity': LegalEntity,
+        'weasyprint_available': WEASYPRINT_AVAILABLE
     }
 
 @app.template_filter('format_number')
@@ -303,9 +338,9 @@ def get_progress_color(progress):
 
 @app.route('/health')
 def health():
-    return 'OK', 200
+    return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()}), 200
 
-# =маршруты аутентификации
+# маршруты аутентификации
 
 @app.route('/')
 def index():
@@ -321,9 +356,10 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and user.check_password(password):
-            login_user(user)
-            session['user_id'] = user.id
+            login_user(user, remember=True)
+            session.permanent = True
             next_page = request.args.get('next')
+            flash(f'Добро пожаловать, {user.full_name}!', 'success')
             return redirect(next_page or url_for('dashboard'))
         else:
             flash('Неверный email или пароль', 'danger')
@@ -338,6 +374,10 @@ def register():
         confirm_password = request.form.get('confirm_password')
         full_name = request.form.get('full_name')
         phone = request.form.get('phone')
+        
+        if not all([email, password, full_name, phone]):
+            flash('Заполните все поля', 'danger')
+            return redirect(url_for('register'))
         
         if password != confirm_password:
             flash('Пароли не совпадают', 'danger')
@@ -356,10 +396,9 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        login_user(user)
-        session['user_id'] = user.id
+        login_user(user, remember=True)
         
-        flash('Регистрация прошла успешно!', 'success')
+        flash('Регистрация прошла успешно! Теперь добавьте данные вашей компании', 'success')
         return redirect(url_for('add_legal_entity'))
     
     return render_template('auth/register.html')
@@ -373,7 +412,7 @@ def add_legal_entity():
         ogrn = request.form.get('ogrn')
         address = request.form.get('address')
         
-        if LegalEntity.query.filter_by(inn=inn).first():
+        if LegalEntity.query.filter_by(inn=inn, user_id=current_user.id).first():
             flash('Юридическое лицо с таким ИНН уже существует', 'danger')
             return redirect(url_for('add_legal_entity'))
         
@@ -396,7 +435,9 @@ def add_legal_entity():
         db.session.add(legal_entity)
         db.session.commit()
         
-        flash('Юридическое лицо добавлено', 'success')
+        session['current_entity_id'] = legal_entity.id
+        
+        flash('Данные компании добавлены!', 'success')
         return redirect(url_for('dashboard'))
     
     return render_template('auth/add_legal_entity.html')
@@ -417,6 +458,10 @@ def edit_profile():
         phone = request.form.get('phone')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
+        
+        if not all([full_name, email, phone]):
+            flash('Заполните все поля', 'danger')
+            return redirect(url_for('edit_profile'))
         
         if email != current_user.email:
             if User.query.filter_by(email=email).first():
@@ -450,6 +495,14 @@ def delete_profile():
         flash('Неверный пароль', 'danger')
         return redirect(url_for('profile'))
     
+    # каскадное удаление
+    for project in current_user.projects:
+        ProjectWork.query.filter_by(project_id=project.id).delete()
+        Expense.query.filter_by(project_id=project.id).delete()
+        Purchase.query.filter_by(project_id=project.id).delete()
+        ProjectPhoto.query.filter_by(project_id=project.id).delete()
+        ProjectTimeline.query.filter_by(project_id=project.id).delete()
+    
     Project.query.filter_by(user_id=current_user.id).delete()
     LegalEntity.query.filter_by(user_id=current_user.id).delete()
     Template.query.filter_by(user_id=current_user.id).delete()
@@ -460,8 +513,6 @@ def delete_profile():
     logout_user()
     flash('Аккаунт удалён', 'info')
     return redirect(url_for('index'))
-
-# темная тема 
 
 @app.route('/toggle-theme')
 @login_required
@@ -483,6 +534,9 @@ def legal_entities():
 def set_default_entity(entity_id):
     LegalEntity.query.filter_by(user_id=current_user.id).update({'is_default': False})
     entity = LegalEntity.query.get_or_404(entity_id)
+    if entity.user_id != current_user.id:
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('legal_entities'))
     entity.is_default = True
     db.session.commit()
     flash('Юридическое лицо установлено по умолчанию', 'success')
@@ -508,8 +562,10 @@ def upload_logo(entity_id):
         filepath = os.path.join(app.config['UPLOAD_FOLDER_LOGO'], filename)
         file.save(filepath)
         
-        if entity.logo_filename and os.path.exists(os.path.join(app.config['UPLOAD_FOLDER_LOGO'], entity.logo_filename)):
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER_LOGO'], entity.logo_filename))
+        if entity.logo_filename:
+            old_path = os.path.join(app.config['UPLOAD_FOLDER_LOGO'], entity.logo_filename)
+            if os.path.exists(old_path):
+                os.remove(old_path)
         
         entity.logo_filename = filename
         db.session.commit()
@@ -543,7 +599,14 @@ def switch_entity(entity_id):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    projects = Project.query.filter_by(user_id=current_user.id).all()
+    projects = Project.query.filter_by(user_id=current_user.id).order_by(Project.created_at.desc()).all()
+    
+    # статистика
+    total_projects = len(projects)
+    active_projects = sum(1 for p in projects if p.status == 'В работе')
+    completed_projects = sum(1 for p in projects if p.status == 'Завершённые')
+    
+    # доходы по месяцам
     monthly_data = {}
     for p in projects:
         if p.timeline and p.timeline.start_date:
@@ -557,13 +620,21 @@ def dashboard():
     months = sorted(monthly_data.keys())[-6:] if monthly_data else []
     incomes = [monthly_data.get(m, 0) for m in months]
     
-    return render_template('dashboard.html', projects=projects, 
-                         chart_months=months, chart_incomes=incomes)
+    return render_template('dashboard.html', 
+                         projects=projects[:5],  # последние 5 проектов
+                         total_projects=total_projects,
+                         active_projects=active_projects,
+                         completed_projects=completed_projects,
+                         chart_months=months, 
+                         chart_incomes=incomes)
+
+# услуги (работы)
 
 @app.route('/services')
 @login_required
 def services():
-    return render_template('services.html', services=Service.query.all())
+    services = Service.query.order_by(Service.name).all()
+    return render_template('services.html', services=services)
 
 @app.route('/services/add', methods=['GET', 'POST'])
 @login_required
@@ -574,12 +645,15 @@ def add_service():
             unit = request.form.get('unit')
             work_price = float(request.form.get('work_price', 0))
             material_price = float(request.form.get('material_price', 0))
+            
             if not name or not unit:
                 flash('Название и единица измерения обязательны', 'danger')
                 return redirect(url_for('add_service'))
-            if work_price <= 0:
-                flash('Цена работы должна быть больше 0', 'danger')
+            
+            if work_price < 0 or material_price < 0:
+                flash('Цены не могут быть отрицательными', 'danger')
                 return redirect(url_for('add_service'))
+            
             service = Service(name=name, unit=unit, work_price=work_price, material_price=material_price)
             db.session.add(service)
             db.session.commit()
@@ -587,6 +661,7 @@ def add_service():
             return redirect(url_for('services'))
         except Exception as e:
             flash(f'Ошибка: {str(e)}', 'danger')
+    
     return render_template('add_service.html')
 
 @app.route('/services/edit/<int:id>', methods=['GET', 'POST'])
@@ -599,37 +674,56 @@ def edit_service(id):
             service.unit = request.form['unit']
             service.work_price = float(request.form.get('work_price', 0))
             service.material_price = float(request.form.get('material_price', 0))
-            if service.work_price <= 0:
-                flash('Цена работы должна быть больше 0', 'danger')
+            
+            if service.work_price < 0 or service.material_price < 0:
+                flash('Цены не могут быть отрицательными', 'danger')
                 return redirect(url_for('edit_service', id=id))
+            
             db.session.commit()
             flash('Услуга обновлена', 'success')
             return redirect(url_for('services'))
         except Exception as e:
             flash(f'Ошибка: {str(e)}', 'danger')
+    
     return render_template('edit_service.html', service=service)
 
 @app.route('/services/delete/<int:id>')
 @login_required
 def delete_service(id):
-    db.session.delete(Service.query.get_or_404(id))
+    service = Service.query.get_or_404(id)
+    # Проверяем, не используется ли услуга в проектах
+    if ProjectWork.query.filter_by(service_id=id).first():
+        flash('Нельзя удалить услугу, которая используется в проектах', 'danger')
+        return redirect(url_for('services'))
+    
+    db.session.delete(service)
     db.session.commit()
     flash('Услуга удалена', 'success')
     return redirect(url_for('services'))
 
+# категории и продукты 
+
 @app.route('/categories')
 @login_required
 def categories():
-    return render_template('categories.html', categories=ProductCategory.query.all())
+    categories = ProductCategory.query.order_by(ProductCategory.name).all()
+    return render_template('categories.html', categories=categories)
 
 @app.route('/categories/add', methods=['GET', 'POST'])
 @login_required
 def add_category():
     if request.method == 'POST':
-        db.session.add(ProductCategory(name=request.form['name']))
+        name = request.form.get('name')
+        if not name:
+            flash('Название категории обязательно', 'danger')
+            return redirect(url_for('add_category'))
+        
+        category = ProductCategory(name=name)
+        db.session.add(category)
         db.session.commit()
         flash('Категория добавлена', 'success')
         return redirect(url_for('categories'))
+    
     return render_template('add_category.html')
 
 @app.route('/categories/edit/<int:id>', methods=['GET', 'POST'])
@@ -641,13 +735,18 @@ def edit_category(id):
         db.session.commit()
         flash('Категория обновлена', 'success')
         return redirect(url_for('categories'))
+    
     return render_template('edit_category.html', category=category)
 
 @app.route('/categories/delete/<int:id>')
 @login_required
 def delete_category(id):
-    Product.query.filter_by(category_id=id).delete()
-    db.session.delete(ProductCategory.query.get_or_404(id))
+    category = ProductCategory.query.get_or_404(id)
+    if Product.query.filter_by(category_id=id).first():
+        flash('Нельзя удалить категорию, в которой есть товары', 'danger')
+        return redirect(url_for('categories'))
+    
+    db.session.delete(category)
     db.session.commit()
     flash('Категория удалена', 'success')
     return redirect(url_for('categories'))
@@ -655,25 +754,37 @@ def delete_category(id):
 @app.route('/products')
 @login_required
 def products():
-    return render_template('products.html', products=Product.query.all(), categories=ProductCategory.query.all())
+    products_list = Product.query.all()
+    categories = ProductCategory.query.all()
+    return render_template('products.html', products=products_list, categories=categories)
 
 @app.route('/products/by-category/<int:category_id>')
 @login_required
 def products_by_category(category_id):
-    products = Product.query.filter_by(category_id=category_id).all()
-    return jsonify([{'id': p.id, 'name': p.name, 'unit': p.unit, 'price': p.price} for p in products])
+    products_list = Product.query.filter_by(category_id=category_id).all()
+    return jsonify([{'id': p.id, 'name': p.name, 'unit': p.unit, 'price': p.price} for p in products_list])
 
 @app.route('/products/add', methods=['GET', 'POST'])
 @login_required
 def add_product():
     if request.method == 'POST':
         try:
+            category_id = int(request.form['category_id'])
+            name = request.form['name']
+            unit = request.form['unit']
+            price = float(request.form['price'])
+            description = request.form.get('description', '')
+            
+            if price < 0:
+                flash('Цена не может быть отрицательной', 'danger')
+                return redirect(url_for('add_product'))
+            
             product = Product(
-                category_id=int(request.form['category_id']),
-                name=request.form['name'],
-                unit=request.form['unit'],
-                price=float(request.form['price']),
-                description=request.form.get('description', '')
+                category_id=category_id,
+                name=name,
+                unit=unit,
+                price=price,
+                description=description
             )
             db.session.add(product)
             db.session.commit()
@@ -681,7 +792,9 @@ def add_product():
             return redirect(url_for('products'))
         except Exception as e:
             flash(f'Ошибка: {str(e)}', 'danger')
-    return render_template('add_product.html', categories=ProductCategory.query.all())
+    
+    categories = ProductCategory.query.all()
+    return render_template('add_product.html', categories=categories)
 
 @app.route('/products/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -693,23 +806,34 @@ def edit_product(id):
         product.unit = request.form['unit']
         product.price = float(request.form['price'])
         product.description = request.form.get('description', '')
+        
+        if product.price < 0:
+            flash('Цена не может быть отрицательной', 'danger')
+            return redirect(url_for('edit_product', id=id))
+        
         db.session.commit()
         flash('Продукт обновлён', 'success')
         return redirect(url_for('products'))
-    return render_template('edit_product.html', product=product, categories=ProductCategory.query.all())
+    
+    categories = ProductCategory.query.all()
+    return render_template('edit_product.html', product=product, categories=categories)
 
 @app.route('/products/delete/<int:id>')
 @login_required
 def delete_product(id):
-    db.session.delete(Product.query.get_or_404(id))
+    product = Product.query.get_or_404(id)
+  
+    db.session.delete(product)
     db.session.commit()
     flash('Продукт удалён', 'success')
     return redirect(url_for('products'))
 
+# проекты
+
 @app.route('/projects')
 @login_required
 def projects():
-    projects_list = Project.query.filter_by(user_id=current_user.id).all()
+    projects_list = Project.query.filter_by(user_id=current_user.id).order_by(Project.created_at.desc()).all()
     for p in projects_list:
         p.progress = calculate_progress(p)
     return render_template('projects.html', projects=projects_list)
@@ -718,20 +842,36 @@ def projects():
 @login_required
 def add_project():
     if request.method == 'POST':
-        project = Project(
-            name=request.form['name'],
-            address=request.form['address'],
-            status=request.form.get('status', 'В работе'),
-            client_name=request.form.get('client_name'),
-            client_phone=request.form.get('client_phone'),
-            estimate_mode=request.form.get('estimate_mode', 'client_no_materials'),
-            user_id=current_user.id,
-            legal_entity_id=session.get('current_entity_id')
-        )
-        db.session.add(project)
-        db.session.commit()
-        flash('Проект создан', 'success')
-        return redirect(url_for('projects'))
+        try:
+            project = Project(
+                name=request.form['name'],
+                address=request.form.get('address', ''),
+                status=request.form.get('status', 'В работе'),
+                client_name=request.form.get('client_name', ''),
+                client_phone=request.form.get('client_phone', ''),
+                estimate_mode=request.form.get('estimate_mode', 'client_no_materials'),
+                user_id=current_user.id,
+                legal_entity_id=session.get('current_entity_id')
+            )
+            db.session.add(project)
+            db.session.commit()
+            
+            start_date = normalize_date(request.form.get('start_date'))
+            end_date = normalize_date(request.form.get('end_date'))
+            if start_date or end_date:
+                timeline = ProjectTimeline(
+                    project_id=project.id,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                db.session.add(timeline)
+                db.session.commit()
+            
+            flash('Проект создан', 'success')
+            return redirect(url_for('project_detail', project_id=project.id))
+        except Exception as e:
+            flash(f'Ошибка: {str(e)}', 'danger')
+    
     return render_template('add_project.html')
 
 @app.route('/projects/delete/<int:id>')
@@ -741,6 +881,14 @@ def delete_project(id):
     if project.user_id != current_user.id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('projects'))
+    
+    # каскадное удаление
+    ProjectWork.query.filter_by(project_id=id).delete()
+    Expense.query.filter_by(project_id=id).delete()
+    Purchase.query.filter_by(project_id=id).delete()
+    ProjectPhoto.query.filter_by(project_id=id).delete()
+    ProjectTimeline.query.filter_by(project_id=id).delete()
+    
     db.session.delete(project)
     db.session.commit()
     flash('Проект удалён', 'success')
@@ -757,17 +905,26 @@ def project_detail(project_id):
     progress = calculate_progress(project)
     works = ProjectWork.query.filter_by(project_id=project_id).all()
     expenses = Expense.query.filter_by(project_id=project_id).all()
+    purchases = Purchase.query.filter_by(project_id=project_id).all()
+    photos = ProjectPhoto.query.filter_by(project_id=project_id).order_by(ProjectPhoto.uploaded_at.desc()).all()
+    timeline = ProjectTimeline.query.filter_by(project_id=project_id).first()
+    
     total = sum(w.total_price for w in works)
     total_expenses = sum(e.amount for e in expenses)
     profit = total - total_expenses
+    
+    services_list = Service.query.order_by(Service.name).all()
+    categories = ProductCategory.query.all()
+    
     return render_template('project_detail.html',
                          project=project,
-                         services=Service.query.all(),
-                         categories=ProductCategory.query.all(),
+                         services=services_list,
+                         categories=categories,
                          works=works,
                          expenses=expenses,
-                         purchases=Purchase.query.filter_by(project_id=project_id).all(),
-                         timeline=ProjectTimeline.query.filter_by(project_id=project_id).first(),
+                         purchases=purchases,
+                         photos=photos,
+                         timeline=timeline,
                          progress=progress,
                          progress_color=get_progress_color(progress),
                          total=total,
@@ -782,77 +939,84 @@ def save_all(project_id):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('projects'))
     
-    project.name = request.form['name']
-    project.address = request.form['address']
-    project.status = request.form['status']
-    project.client_name = request.form.get('client_name', '')
-    project.client_phone = request.form.get('client_phone', '')
-    project.actual_end_date = normalize_date(request.form.get('actual_end_date'))
-    project.estimate_mode = request.form.get('estimate_mode', project.estimate_mode)
-    timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
-    start_date = normalize_date(request.form.get('start_date'))
-    end_date = normalize_date(request.form.get('end_date'))
-    if timeline:
-        timeline.start_date = start_date or None
-        timeline.end_date = end_date or None
-    elif start_date or end_date:
-        db.session.add(ProjectTimeline(project_id=project.id, start_date=start_date or None, end_date=end_date or None))
-    for work in project.works:
-        qty_key = f'work_qty_{work.id}'
-        if qty_key in request.form:
-            work.quantity = float(request.form[qty_key])
-            if work.custom_total_price:
-                work.total_price = work.custom_total_price * work.quantity
-            else:
-                price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
-                if work.custom_material_price is not None:
-                    price += work.custom_material_price
+    try:
+        project.name = request.form['name']
+        project.address = request.form['address']
+        project.status = request.form['status']
+        project.client_name = request.form.get('client_name', '')
+        project.client_phone = request.form.get('client_phone', '')
+        project.actual_end_date = normalize_date(request.form.get('actual_end_date'))
+        project.estimate_mode = request.form.get('estimate_mode', project.estimate_mode)
+        project.updated_at = datetime.utcnow()
+        
+        timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+        start_date = normalize_date(request.form.get('start_date'))
+        end_date = normalize_date(request.form.get('end_date'))
+        
+        if timeline:
+            timeline.start_date = start_date or None
+            timeline.end_date = end_date or None
+        elif start_date or end_date:
+            timeline = ProjectTimeline(project_id=project.id, start_date=start_date or None, end_date=end_date or None)
+            db.session.add(timeline)
+        
+        # обновляем существующие работы
+        for work in project.works:
+            qty_key = f'work_qty_{work.id}'
+            if qty_key in request.form:
+                work.quantity = float(request.form[qty_key])
+                if work.custom_total_price:
+                    work.total_price = work.custom_total_price * work.quantity
                 else:
-                    price += work.service.material_price
-                work.total_price = price * work.quantity
-    for expense in project.expenses:
-        name_key = f'expense_name_{expense.id}'
-        amount_key = f'expense_amount_{expense.id}'
-        if name_key in request.form and amount_key in request.form:
-            expense.name = request.form[name_key]
-            expense.amount = float(request.form[amount_key])
-    if request.form.get('add_work'):
-        service_id = request.form.get('new_service_id')
-        quantity = request.form.get('new_quantity')
-        if service_id and quantity:
-            service = Service.query.get(int(service_id))
-            qty = float(quantity)
-            total_price = (service.work_price + service.material_price) * qty
-            db.session.add(ProjectWork(project_id=project.id, service_id=service.id, quantity=qty, total_price=total_price))
-    if request.form.get('add_expense'):
-        name = request.form.get('new_expense_name')
-        amount = request.form.get('new_expense_amount')
-        if name and amount:
-            db.session.add(Expense(project_id=project.id, name=name, amount=float(amount)))
-    if request.form.get('add_purchase'):
-        purchase_name = request.form.get('new_purchase_name')
-        if purchase_name:
-            db.session.add(Purchase(project_id=project.id, name=purchase_name))
-    for purchase in project.purchases:
-        purchase.is_purchased = f'purchased_{purchase.id}' in request.form
-    db.session.commit()
-    return redirect(url_for('project_detail', project_id=project_id))
-
-@app.route('/project/<int:project_id>/add_product_work', methods=['POST'])
-@login_required
-def add_product_work(project_id):
-    project = Project.query.get_or_404(project_id)
-    if project.user_id != current_user.id:
-        flash('Доступ запрещен', 'danger')
-        return redirect(url_for('projects'))
+                    price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
+                    if work.custom_material_price is not None:
+                        price += work.custom_material_price
+                    else:
+                        price += work.service.material_price
+                    work.total_price = price * work.quantity
+        
+        # обновляем существующие расходы
+        for expense in project.expenses:
+            name_key = f'expense_name_{expense.id}'
+            amount_key = f'expense_amount_{expense.id}'
+            if name_key in request.form and amount_key in request.form:
+                expense.name = request.form[name_key]
+                expense.amount = float(request.form[amount_key])
+        
+        # добавляем новую работу
+        if request.form.get('add_work'):
+            service_id = request.form.get('new_service_id')
+            quantity = request.form.get('new_quantity')
+            if service_id and quantity:
+                service = Service.query.get(int(service_id))
+                qty = float(quantity)
+                total_price = (service.work_price + service.material_price) * qty
+                db.session.add(ProjectWork(project_id=project.id, service_id=service.id, quantity=qty, total_price=total_price))
+        
+        # добавляем новый расход
+        if request.form.get('add_expense'):
+            name = request.form.get('new_expense_name')
+            amount = request.form.get('new_expense_amount')
+            if name and amount:
+                db.session.add(Expense(project_id=project.id, name=name, amount=float(amount)))
+        
+        # добавляем новую покупку
+        if request.form.get('add_purchase'):
+            purchase_name = request.form.get('new_purchase_name')
+            if purchase_name:
+                db.session.add(Purchase(project_id=project.id, name=purchase_name))
+        
+        # обновляем статус покупок
+        for purchase in project.purchases:
+            purchase.is_purchased = f'purchased_{purchase.id}' in request.form
+        
+        db.session.commit()
+        flash('Все данные сохранены', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при сохранении: {str(e)}', 'danger')
     
-    product = Product.query.get_or_404(request.form['product_id'])
-    quantity = float(request.form['quantity'])
-    service = Service(name=product.name, unit=product.unit, work_price=product.price, material_price=0)
-    db.session.add(service)
-    db.session.commit()
-    db.session.add(ProjectWork(project_id=project_id, service_id=service.id, quantity=quantity, total_price=product.price * quantity))
-    db.session.commit()
     return redirect(url_for('project_detail', project_id=project_id))
 
 @app.route('/project/<int:project_id>/copy')
@@ -863,32 +1027,45 @@ def copy_project(project_id):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('projects'))
     
-    new_project = Project(
-        name=f"{original.name} (копия)",
-        address=original.address,
-        status="В работе",
-        client_name=original.client_name,
-        client_phone=original.client_phone,
-        actual_end_date=original.actual_end_date,
-        estimate_mode=original.estimate_mode,
-        user_id=current_user.id,
-        legal_entity_id=original.legal_entity_id
-    )
-    db.session.add(new_project)
-    db.session.commit()
-    if original.timeline:
-        db.session.add(ProjectTimeline(project_id=new_project.id, start_date=original.timeline.start_date, end_date=original.timeline.end_date))
-    for work in original.works:
-        db.session.add(ProjectWork(project_id=new_project.id, service_id=work.service_id, quantity=work.quantity, total_price=work.total_price,
-                                 custom_work_price=work.custom_work_price, custom_material_price=work.custom_material_price, 
-                                 custom_total_price=work.custom_total_price, custom_name=work.custom_name))
-    for expense in original.expenses:
-        db.session.add(Expense(project_id=new_project.id, name=expense.name, amount=expense.amount))
-    for purchase in original.purchases:
-        db.session.add(Purchase(project_id=new_project.id, name=purchase.name, quantity=purchase.quantity, is_purchased=False))
-    db.session.commit()
-    flash('Проект скопирован', 'success')
-    return redirect(url_for('project_detail', project_id=new_project.id))
+    try:
+        new_project = Project(
+            name=f"{original.name} (копия)",
+            address=original.address,
+            status="В работе",
+            client_name=original.client_name,
+            client_phone=original.client_phone,
+            actual_end_date=original.actual_end_date,
+            estimate_mode=original.estimate_mode,
+            user_id=current_user.id,
+            legal_entity_id=original.legal_entity_id
+        )
+        db.session.add(new_project)
+        db.session.commit()
+        
+        if original.timeline:
+            db.session.add(ProjectTimeline(project_id=new_project.id, start_date=original.timeline.start_date, end_date=original.timeline.end_date))
+        
+        for work in original.works:
+            db.session.add(ProjectWork(project_id=new_project.id, service_id=work.service_id, quantity=work.quantity, total_price=work.total_price,
+                                     custom_work_price=work.custom_work_price, custom_material_price=work.custom_material_price, 
+                                     custom_total_price=work.custom_total_price, custom_name=work.custom_name))
+        
+        for expense in original.expenses:
+            db.session.add(Expense(project_id=new_project.id, name=expense.name, amount=expense.amount))
+        
+        for purchase in original.purchases:
+            db.session.add(Purchase(project_id=new_project.id, name=purchase.name, quantity=purchase.quantity, is_purchased=False))
+        
+        db.session.commit()
+        flash('Проект скопирован', 'success')
+        return redirect(url_for('project_detail', project_id=new_project.id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при копировании: {str(e)}', 'danger')
+        return redirect(url_for('projects'))
+
+# AJAX маршруты 
 
 @app.route('/project/<int:project_id>/delete_work_ajax/<int:work_id>', methods=['DELETE'])
 @login_required
@@ -897,6 +1074,7 @@ def delete_work_ajax(project_id, work_id):
     project = Project.query.get_or_404(project_id)
     if project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+    
     db.session.delete(work)
     db.session.commit()
     return jsonify({'success': True})
@@ -908,6 +1086,7 @@ def delete_expense_ajax(project_id, expense_id):
     project = Project.query.get_or_404(project_id)
     if project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+    
     db.session.delete(expense)
     db.session.commit()
     return jsonify({'success': True})
@@ -919,6 +1098,7 @@ def delete_purchase_ajax(project_id, purchase_id):
     project = Project.query.get_or_404(project_id)
     if project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+    
     db.session.delete(purchase)
     db.session.commit()
     return jsonify({'success': True})
@@ -933,6 +1113,7 @@ def settings():
         Setting.set('company_inn', request.form.get('company_inn', ''))
         flash('Настройки сохранены', 'success')
         return redirect(url_for('settings'))
+    
     return render_template('settings.html',
                          company_name=Setting.get('company_name', 'Карманный Прораб'),
                          company_phone=Setting.get('company_phone', '+7(XXX)XXX-XX-XX'),
@@ -944,216 +1125,90 @@ def settings():
 @app.route('/project/<int:project_id>/estimate/pdf')
 @login_required
 def project_estimate_pdf(project_id):
+    if not WEASYPRINT_AVAILABLE:
+        flash('Генерация PDF временно недоступна. Используйте экспорт в Excel.', 'warning')
+        return redirect(url_for('project_detail', project_id=project_id))
+    
     project = Project.query.get_or_404(project_id)
     if project.user_id != current_user.id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('projects'))
     
-    mode = request.args.get('mode', 'full')
-    entity_id = request.args.get('entity_id')
-    photo_ids_param = request.args.get('photo_ids', '')
-    photo_ids = [int(x) for x in photo_ids_param.split(',') if x]
-    
-    works = ProjectWork.query.filter_by(project_id=project_id).all()
-    timeline = ProjectTimeline.query.filter_by(project_id=project_id).first()
-    total_income = sum(w.total_price for w in works)
-    expenses = Expense.query.filter_by(project_id=project_id).all()
-    total_expenses = sum(e.amount for e in expenses)
-    profit = total_income - total_expenses
-    
-    works_list = []
-    for i, w in enumerate(works, 1):
-        name = w.custom_name if w.custom_name else w.service.name
-        unit = w.service.unit
-        quantity = w.quantity
-        work_price = w.custom_work_price if w.custom_work_price else w.service.work_price
-        material_price = w.custom_material_price if w.custom_material_price else w.service.material_price
-        works_list.append({
-            'num': i, 'name': name, 'unit': unit, 'quantity': quantity,
-            'work_price': work_price, 'material_price': material_price, 'total': w.total_price
-        })
-    
-    logo_url = None
-    if entity_id:
-        entity = LegalEntity.query.get(entity_id)
-        if entity and entity.logo_filename:
-            logo_url = url_for('static', filename=f'uploads/logo/{entity.logo_filename}', _external=True)
-    
-    photos = ProjectPhoto.query.filter(ProjectPhoto.id.in_(photo_ids)).all() if photo_ids else []
-    
-    if mode == 'internal':
-        template_name = 'pdf_internal.html'
-    elif mode == 'short':
-        template_name = 'pdf_estimate_short.html'
-    else:
-        template_name = 'pdf_estimate.html'
-    
-    html_content = render_template(template_name, 
-                                 project=project, works=works_list, total_income=total_income,
-                                 timeline=timeline, 
-                                 company_name=Setting.get('company_name', 'Карманный Прораб'),
-                                 company_phone=Setting.get('company_phone', '+7(XXX)XXX-XX-XX'),
-                                 company_email=Setting.get('company_email', 'info@karman-prorab.ru'),
-                                 company_inn=Setting.get('company_inn', ''), 
-                                 estimate_mode=mode,
-                                 logo_url=logo_url,
-                                 expenses=expenses,
-                                 total_expenses=total_expenses,
-                                 profit=profit,
-                                 photos=photos)
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
-        HTML(string=html_content).write_pdf(tmp.name)
-        tmp_path = tmp.name
-    return send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf')
-
-@app.route('/project/<int:project_id>/preview_pdf', methods=['POST'])
-@login_required
-def preview_pdf(project_id):
-    project = Project.query.get_or_404(project_id)
-    if project.user_id != current_user.id:
-        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
-    
-    data = request.json
-    mode = data.get('mode', 'full')
-    entity_id = data.get('entity_id')
-    photo_ids = data.get('photo_ids', [])
-    
-    works = ProjectWork.query.filter_by(project_id=project_id).all()
-    timeline = ProjectTimeline.query.filter_by(project_id=project_id).first()
-    total_income = sum(w.total_price for w in works)
-    expenses = Expense.query.filter_by(project_id=project_id).all()
-    total_expenses = sum(e.amount for e in expenses)
-    profit = total_income - total_expenses
-    
-    works_list = []
-    for i, w in enumerate(works, 1):
-        name = w.custom_name if w.custom_name else w.service.name
-        unit = w.service.unit
-        quantity = w.quantity
-        work_price = w.custom_work_price if w.custom_work_price else w.service.work_price
-        material_price = w.custom_material_price if w.custom_material_price else w.service.material_price
-        works_list.append({
-            'num': i, 'name': name, 'unit': unit, 'quantity': quantity,
-            'work_price': work_price, 'material_price': material_price, 'total': w.total_price
-        })
-    
-    logo_url = None
-    if entity_id:
-        entity = LegalEntity.query.get(entity_id)
-        if entity and entity.logo_filename:
-            logo_url = url_for('static', filename=f'uploads/logo/{entity.logo_filename}', _external=True)
-    
-    photos = ProjectPhoto.query.filter(ProjectPhoto.id.in_(photo_ids)).all() if photo_ids else []
-    
-    if mode == 'internal':
-        template_name = 'pdf_internal.html'
-    elif mode == 'short':
-        template_name = 'pdf_estimate_short.html'
-    else:
-        template_name = 'pdf_estimate.html'
-    
-    html_content = render_template(template_name, 
-                                 project=project, works=works_list, total_income=total_income,
-                                 timeline=timeline, 
-                                 company_name=Setting.get('company_name', 'Карманный Прораб'),
-                                 company_phone=Setting.get('company_phone', '+7(XXX)XXX-XX-XX'),
-                                 company_email=Setting.get('company_email', 'info@karman-prorab.ru'),
-                                 company_inn=Setting.get('company_inn', ''), 
-                                 estimate_mode=mode,
-                                 logo_url=logo_url,
-                                 expenses=expenses,
-                                 total_expenses=total_expenses,
-                                 profit=profit,
-                                 photos=photos)
-    
-    return jsonify({'html': html_content})
-
-# загрузка шаблонов 
-
-@app.route('/project/<int:project_id>/upload_template', methods=['POST'])
-@login_required
-def upload_template(project_id):
-    project = Project.query.get_or_404(project_id)
-    if project.user_id != current_user.id:
-        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
-    
-    template_name = request.form.get('template_name')
-    file = request.files.get('template_file')
-    apply_to_project = request.form.get('apply_to_project') == 'on'
-    
-    if not file or not template_name:
-        return jsonify({'success': False, 'message': 'Название шаблона и файл обязательны'})
-    
-    if not allowed_file(file.filename):
-        return jsonify({'success': False, 'message': 'Недопустимый формат файла. Поддерживаются .xlsx и .csv'})
-    
-    # сохраняем файл шаблона
-    original_name = secure_filename(file.filename)
-    filename = f"template_{current_user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_name}"
-    filepath = os.path.join(app.config['UPLOAD_FOLDER_TEMPLATES'], filename)
-    file.save(filepath)
-    
-    # сохраняем запись о шаблоне в БД
-    template = Template(
-        user_id=current_user.id,
-        name=template_name,
-        filename=filename
-    )
-    db.session.add(template)
-    db.session.commit()
-    
-    # если нужно применить к текущему проекту
-    if apply_to_project:
-        try:
-            # загружаем Excel и добавляем услуги в проект
-            wb = load_workbook(filepath)
-            ws = wb.active
-            
-            added_count = 0
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if not row[0] or not row[1] or not row[2]:
-                    continue
-                
-                service_name = str(row[0]).strip()
-                unit = str(row[1]).strip()
-                price = float(row[2])
-                
-                # Проверяем, есть ли уже такая услуга
-                existing_service = Service.query.filter_by(
-                    name=service_name, 
-                    unit=unit,
-                    work_price=price
-                ).first()
-                
-                if not existing_service:
-                    existing_service = Service(
-                        name=service_name,
-                        unit=unit,
-                        work_price=price,
-                        material_price=0
-                    )
-                    db.session.add(existing_service)
-                    db.session.commit()
-                
-                # Добавляем работу в проект
-                work = ProjectWork(
-                    project_id=project.id,
-                    service_id=existing_service.id,
-                    quantity=1,
-                    total_price=price
-                )
-                db.session.add(work)
-                added_count += 1
-            
-            db.session.commit()
-            return jsonify({'success': True, 'applied': True, 'added_count': added_count})
-        except Exception as e:
-            return jsonify({'success': False, 'message': f'Ошибка при применении шаблона: {str(e)}'})
-    
-    return jsonify({'success': True, 'applied': False})
-
-# EXCEL
+    try:
+        mode = request.args.get('mode', 'full')
+        entity_id = request.args.get('entity_id')
+        photo_ids_param = request.args.get('photo_ids', '')
+        photo_ids = [int(x) for x in photo_ids_param.split(',') if x]
+        
+        works = ProjectWork.query.filter_by(project_id=project_id).all()
+        timeline = ProjectTimeline.query.filter_by(project_id=project_id).first()
+        total_income = sum(w.total_price for w in works)
+        expenses = Expense.query.filter_by(project_id=project_id).all()
+        total_expenses = sum(e.amount for e in expenses)
+        profit = total_income - total_expenses
+        
+        works_list = []
+        for i, w in enumerate(works, 1):
+            name = w.custom_name if w.custom_name else w.service.name
+            unit = w.service.unit
+            quantity = w.quantity
+            work_price = w.custom_work_price if w.custom_work_price else w.service.work_price
+            material_price = w.custom_material_price if w.custom_material_price else w.service.material_price
+            works_list.append({
+                'num': i, 'name': name, 'unit': unit, 'quantity': quantity,
+                'work_price': work_price, 'material_price': material_price, 'total': w.total_price
+            })
+        
+        logo_url = None
+        if entity_id:
+            entity = LegalEntity.query.get(entity_id)
+            if entity and entity.logo_filename and entity.user_id == current_user.id:
+                logo_path = os.path.join(app.config['UPLOAD_FOLDER_LOGO'], entity.logo_filename)
+                if os.path.exists(logo_path):
+                    logo_url = url_for('static', filename=f'uploads/logo/{entity.logo_filename}', _external=True)
+        
+        photos = ProjectPhoto.query.filter(ProjectPhoto.id.in_(photo_ids)).all() if photo_ids else []
+        
+        if mode == 'internal':
+            template_name = 'pdf_internal.html'
+        elif mode == 'short':
+            template_name = 'pdf_estimate_short.html'
+        else:
+            template_name = 'pdf_estimate.html'
+        
+        html_content = render_template(template_name, 
+                                     project=project, works=works_list, total_income=total_income,
+                                     timeline=timeline, 
+                                     company_name=Setting.get('company_name', 'Карманный Прораб'),
+                                     company_phone=Setting.get('company_phone', '+7(XXX)XXX-XX-XX'),
+                                     company_email=Setting.get('company_email', 'info@karman-prorab.ru'),
+                                     company_inn=Setting.get('company_inn', ''), 
+                                     estimate_mode=mode,
+                                     logo_url=logo_url,
+                                     expenses=expenses,
+                                     total_expenses=total_expenses,
+                                     profit=profit,
+                                     photos=photos)
+        
+        # Генерация PDF во временный файл
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+            HTML(string=html_content).write_pdf(tmp.name)
+            tmp_path = tmp.name
+        
+        def cleanup():
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+        
+        response = send_file(tmp_path, as_attachment=True, download_name=f'Смета_{project.name}.pdf', mimetype='application/pdf')
+        response.call_on_close(cleanup)
+        return response
+        
+    except Exception as e:
+        logger.error(f"PDF generation error: {e}")
+        flash(f'Ошибка при генерации PDF: {str(e)}', 'danger')
+        return redirect(url_for('project_detail', project_id=project_id))
 
 @app.route('/project/<int:project_id>/export_excel')
 @login_required
@@ -1163,108 +1218,130 @@ def export_excel(project_id):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('projects'))
     
-    works = ProjectWork.query.filter_by(project_id=project_id).all()
-    expenses = Expense.query.filter_by(project_id=project_id).all()
-    total_income = sum(w.total_price for w in works)
-    total_expenses = sum(e.amount for e in expenses)
-    profit = total_income - total_expenses
-    
-    wb = Workbook()
-    
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="2E7D32", end_color="2E7D32", fill_type="solid")
-    header_alignment = Alignment(horizontal="center", vertical="center")
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-    
-    ws1 = wb.active
-    ws1.title = "Смета"
-    ws1.merge_cells('A1:F1')
-    ws1['A1'] = f'СМЕТА: {project.name}'
-    ws1['A1'].font = Font(bold=True, size=14)
-    ws1['A1'].alignment = Alignment(horizontal="center")
-    
-    ws1['A3'] = 'Объект:'
-    ws1['B3'] = project.name
-    ws1['A4'] = 'Адрес:'
-    ws1['B4'] = project.address or '-'
-    ws1['A5'] = 'Заказчик:'
-    ws1['B5'] = project.client_name or '-'
-    
-    headers = ['№', 'Наименование работ', 'Ед. изм.', 'Кол-во', 'Цена, руб', 'Сумма, руб']
-    for col, header in enumerate(headers, 1):
-        cell = ws1.cell(row=8, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-    
-    row = 9
-    for i, work in enumerate(works, 1):
-        name = work.custom_name if work.custom_name else work.service.name
-        unit = work.service.unit
-        price = (work.custom_work_price if work.custom_work_price else work.service.work_price) + (work.custom_material_price if work.custom_material_price else work.service.material_price)
+    try:
+        works = ProjectWork.query.filter_by(project_id=project_id).all()
+        expenses = Expense.query.filter_by(project_id=project_id).all()
+        total_income = sum(w.total_price for w in works)
+        total_expenses = sum(e.amount for e in expenses)
+        profit = total_income - total_expenses
         
-        ws1.cell(row=row, column=1, value=i).border = thin_border
-        ws1.cell(row=row, column=2, value=name).border = thin_border
-        ws1.cell(row=row, column=3, value=unit).border = thin_border
-        ws1.cell(row=row, column=4, value=float(work.quantity)).border = thin_border
-        ws1.cell(row=row, column=5, value=round(price, 2)).border = thin_border
-        ws1.cell(row=row, column=6, value=round(work.total_price, 2)).border = thin_border
-        row += 1
+        wb = Workbook()
+        
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="2E7D32", end_color="2E7D32", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+        
+        # лист со сметой
+        ws1 = wb.active
+        ws1.title = "Смета"
+        ws1.merge_cells('A1:F1')
+        ws1['A1'] = f'СМЕТА: {project.name}'
+        ws1['A1'].font = Font(bold=True, size=14)
+        ws1['A1'].alignment = Alignment(horizontal="center")
+        
+        ws1['A3'] = 'Объект:'
+        ws1['B3'] = project.name
+        ws1['A4'] = 'Адрес:'
+        ws1['B4'] = project.address or '-'
+        ws1['A5'] = 'Заказчик:'
+        ws1['B5'] = project.client_name or '-'
+        
+        headers = ['№', 'Наименование работ', 'Ед. изм.', 'Кол-во', 'Цена, руб', 'Сумма, руб']
+        for col, header in enumerate(headers, 1):
+            cell = ws1.cell(row=8, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        row = 9
+        for i, work in enumerate(works, 1):
+            name = work.custom_name if work.custom_name else work.service.name
+            unit = work.service.unit
+            price = (work.custom_work_price if work.custom_work_price else work.service.work_price) + (work.custom_material_price if work.custom_material_price else work.service.material_price)
+            
+            ws1.cell(row=row, column=1, value=i).border = thin_border
+            ws1.cell(row=row, column=2, value=name).border = thin_border
+            ws1.cell(row=row, column=3, value=unit).border = thin_border
+            ws1.cell(row=row, column=4, value=float(work.quantity)).border = thin_border
+            ws1.cell(row=row, column=5, value=round(price, 2)).border = thin_border
+            ws1.cell(row=row, column=6, value=round(work.total_price, 2)).border = thin_border
+            row += 1
+        
+        total_row = row
+        ws1.cell(row=total_row, column=5, value='ИТОГО:').font = Font(bold=True)
+        ws1.cell(row=total_row, column=6, value=round(total_income, 2)).font = Font(bold=True)
+        for col in range(1, 7):
+            ws1.cell(row=total_row, column=col).border = thin_border
+        
+        # лист с расходами
+        ws2 = wb.create_sheet("Расходы")
+        ws2['A1'] = f'РАСХОДЫ ПО ПРОЕКТУ: {project.name}'
+        ws2['A1'].font = Font(bold=True, size=14)
+        
+        headers2 = ['№', 'Наименование расхода', 'Сумма, руб']
+        for col, header in enumerate(headers2, 1):
+            cell = ws2.cell(row=3, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        row = 4
+        for i, expense in enumerate(expenses, 1):
+            ws2.cell(row=row, column=1, value=i).border = thin_border
+            ws2.cell(row=row, column=2, value=expense.name).border = thin_border
+            ws2.cell(row=row, column=3, value=round(expense.amount, 2)).border = thin_border
+            row += 1
+        
+        total_row2 = row
+        ws2.cell(row=total_row2, column=2, value='ИТОГО:').font = Font(bold=True)
+        ws2.cell(row=total_row2, column=3, value=round(total_expenses, 2)).font = Font(bold=True)
+        for col in range(1, 4):
+            ws2.cell(row=total_row2, column=col).border = thin_border
+        
+        # лист с прибылью
+        ws3 = wb.create_sheet("Прибыль")
+        ws3['A1'] = f'ИТОГОВАЯ ПРИБЫЛЬ: {project.name}'
+        ws3['A1'].font = Font(bold=True, size=14)
+        
+        ws3['A3'] = 'Доход по смете:'
+        ws3['B3'] = round(total_income, 2)
+        ws3['A4'] = 'Расходы по проекту:'
+        ws3['B4'] = round(total_expenses, 2)
+        ws3['A6'] = 'ИТОГОВАЯ ПРИБЫЛЬ:'
+        ws3['B6'] = round(profit, 2)
+        ws3['A6'].font = Font(bold=True, size=12)
+        ws3['B6'].font = Font(bold=True, size=12)
+        if profit >= 0:
+            ws3['B6'].fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+        else:
+            ws3['B6'].fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
+        
+        # Автоматическое изменение ширины столбцов
+        for column in ws1.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws1.column_dimensions[column_letter].width = adjusted_width
+        
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        return send_file(output, as_attachment=True, download_name=f'Смета_{project.name}.xlsx', 
+                        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     
-    total_row = row
-    ws1.cell(row=total_row, column=5, value='ИТОГО:').font = Font(bold=True)
-    ws1.cell(row=total_row, column=6, value=round(total_income, 2)).font = Font(bold=True)
-    for col in range(1, 7):
-        ws1.cell(row=total_row, column=col).border = thin_border
-    
-    ws2 = wb.create_sheet("Расходы")
-    ws2['A1'] = f'РАСХОДЫ ПО ПРОЕКТУ: {project.name}'
-    ws2['A1'].font = Font(bold=True, size=14)
-    
-    headers2 = ['№', 'Наименование расхода', 'Сумма, руб']
-    for col, header in enumerate(headers2, 1):
-        cell = ws2.cell(row=3, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-    
-    row = 4
-    for i, expense in enumerate(expenses, 1):
-        ws2.cell(row=row, column=1, value=i).border = thin_border
-        ws2.cell(row=row, column=2, value=expense.name).border = thin_border
-        ws2.cell(row=row, column=3, value=round(expense.amount, 2)).border = thin_border
-        row += 1
-    
-    total_row2 = row
-    ws2.cell(row=total_row2, column=2, value='ИТОГО:').font = Font(bold=True)
-    ws2.cell(row=total_row2, column=3, value=round(total_expenses, 2)).font = Font(bold=True)
-    for col in range(1, 4):
-        ws2.cell(row=total_row2, column=col).border = thin_border
-    
-    ws3 = wb.create_sheet("Прибыль")
-    ws3['A1'] = f'ИТОГОВАЯ ПРИБЫЛЬ: {project.name}'
-    ws3['A1'].font = Font(bold=True, size=14)
-    
-    ws3['A3'] = 'Доход по смете:'
-    ws3['B3'] = round(total_income, 2)
-    ws3['A4'] = 'Расходы по проекту:'
-    ws3['B4'] = round(total_expenses, 2)
-    ws3['A6'] = 'ИТОГОВАЯ ПРИБЫЛЬ:'
-    ws3['B6'] = round(profit, 2)
-    ws3['A6'].font = Font(bold=True, size=12)
-    ws3['B6'].font = Font(bold=True, size=12)
-    if profit > 0:
-        ws3['B6'].fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
-    else:
-        ws3['B6'].fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
-    
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return send_file(output, as_attachment=True, download_name=f'Смета_{project.name}.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        flash(f'Ошибка при экспорте: {str(e)}', 'danger')
+        return redirect(url_for('project_detail', project_id=project_id))
 
 # фото чеков 
 
@@ -1285,7 +1362,7 @@ def add_expense_photo(expense_id):
     if file and allowed_file(file.filename):
         original_name = secure_filename(file.filename)
         filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_name}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER_RECEIPTS'], filename).replace('\\', '/')
+        filepath = os.path.join(app.config['UPLOAD_FOLDER_RECEIPTS'], filename)
         file.save(filepath)
         
         photo = ExpensePhoto(expense_id=expense_id, filename=filename, filepath=filename)
@@ -1303,8 +1380,9 @@ def delete_expense_photo(photo_id):
     if photo.expense.project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
     
-    if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER_RECEIPTS'], photo.filepath)):
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER_RECEIPTS'], photo.filepath))
+    file_path = os.path.join(app.config['UPLOAD_FOLDER_RECEIPTS'], photo.filepath)
+    if os.path.exists(file_path):
+        os.remove(file_path)
     
     db.session.delete(photo)
     db.session.commit()
@@ -1332,7 +1410,7 @@ def add_project_photo(project_id):
     if file and allowed_file(file.filename):
         original_name = secure_filename(file.filename)
         filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_name}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], filename).replace('\\', '/')
+        filepath = os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], filename)
         file.save(filepath)
         
         photo = ProjectPhoto(project_id=project_id, filename=filename, filepath=filename, photo_type=photo_type, description=description)
@@ -1350,8 +1428,9 @@ def delete_project_photo(photo_id):
     if photo.project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
     
-    if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath)):
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath))
+    file_path = os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath)
+    if os.path.exists(file_path):
+        os.remove(file_path)
     
     db.session.delete(photo)
     db.session.commit()
@@ -1362,123 +1441,135 @@ def delete_project_photo(photo_id):
 def get_project_photo(photo_id):
     photo = ProjectPhoto.query.get_or_404(photo_id)
     if photo.project.user_id != current_user.id:
-        flash('Доступ запрещен', 'danger')
-        return redirect(url_for('projects'))
+        abort(403)
     
-    return send_file(os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath), mimetype='image/jpeg')
+    file_path = os.path.join(app.config['UPLOAD_FOLDER_PHOTOS'], photo.filepath)
+    if not os.path.exists(file_path):
+        abort(404)
+    
+    return send_file(file_path)
 
-# AJAX маршруты 
+# AJAX маршруты для проектов
 
 @app.route('/project/<int:project_id>/autosave', methods=['POST'])
 @login_required
 def autosave(project_id):
-    data = request.get_json()
-    field = data.get('field')
-    value = data.get('value')
     project = Project.query.get_or_404(project_id)
     
     if project.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
     
-    if field in ['start_date', 'end_date', 'actual_end_date']:
-        value = normalize_date(value)
-    elif field == 'estimate_mode':
-        project.estimate_mode = value
-        db.session.commit()
-        return jsonify({'success': True})
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
     
-    if field == 'name':
-        project.name = value
-    elif field == 'address':
-        project.address = value
-    elif field == 'status':
-        project.status = value
-    elif field == 'client_name':
-        project.client_name = value
-    elif field == 'client_phone':
-        project.client_phone = value
-    elif field == 'actual_end_date':
-        project.actual_end_date = value
-    elif field == 'start_date':
-        timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
-        if not timeline:
-            timeline = ProjectTimeline(project_id=project.id)
-            db.session.add(timeline)
-        timeline.start_date = value
-    elif field == 'end_date':
-        timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
-        if not timeline:
-            timeline = ProjectTimeline(project_id=project.id)
-            db.session.add(timeline)
-        timeline.end_date = value
-    elif field.startswith('work_qty_'):
-        work_id = int(field.split('_')[-1])
-        work = ProjectWork.query.get(work_id)
-        if work and work.project.user_id == current_user.id:
-            work.quantity = float(value)
-            if work.custom_total_price:
-                work.total_price = work.custom_total_price * work.quantity
-            else:
-                price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
+    try:
+        if field in ['start_date', 'end_date', 'actual_end_date']:
+            value = normalize_date(value)
+        elif field == 'estimate_mode':
+            project.estimate_mode = value
+            db.session.commit()
+            return jsonify({'success': True})
+        
+        if field == 'name':
+            project.name = value
+        elif field == 'address':
+            project.address = value
+        elif field == 'status':
+            project.status = value
+        elif field == 'client_name':
+            project.client_name = value
+        elif field == 'client_phone':
+            project.client_phone = value
+        elif field == 'actual_end_date':
+            project.actual_end_date = value
+        elif field == 'start_date':
+            timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+            if not timeline:
+                timeline = ProjectTimeline(project_id=project.id)
+                db.session.add(timeline)
+            timeline.start_date = value
+        elif field == 'end_date':
+            timeline = ProjectTimeline.query.filter_by(project_id=project.id).first()
+            if not timeline:
+                timeline = ProjectTimeline(project_id=project.id)
+                db.session.add(timeline)
+            timeline.end_date = value
+        elif field.startswith('work_qty_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work and work.project.user_id == current_user.id:
+                work.quantity = float(value)
+                if work.custom_total_price:
+                    work.total_price = work.custom_total_price * work.quantity
+                else:
+                    price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
+                    if work.custom_material_price is not None:
+                        price += work.custom_material_price
+                    else:
+                        price += work.service.material_price
+                    work.total_price = price * work.quantity
+        elif field.startswith('work_work_price_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work and work.project.user_id == current_user.id:
+                work.custom_work_price = float(value)
+                work.custom_total_price = None
+                price = work.custom_work_price
                 if work.custom_material_price is not None:
                     price += work.custom_material_price
                 else:
                     price += work.service.material_price
                 work.total_price = price * work.quantity
-    elif field.startswith('work_work_price_'):
-        work_id = int(field.split('_')[-1])
-        work = ProjectWork.query.get(work_id)
-        if work and work.project.user_id == current_user.id:
-            work.custom_work_price = float(value)
-            work.custom_total_price = None
-            price = work.custom_work_price
-            if work.custom_material_price is not None:
+        elif field.startswith('work_material_price_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work and work.project.user_id == current_user.id:
+                work.custom_material_price = float(value)
+                work.custom_total_price = None
+                price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
                 price += work.custom_material_price
-            else:
-                price += work.service.material_price
-            work.total_price = price * work.quantity
-    elif field.startswith('work_material_price_'):
-        work_id = int(field.split('_')[-1])
-        work = ProjectWork.query.get(work_id)
-        if work and work.project.user_id == current_user.id:
-            work.custom_material_price = float(value)
-            work.custom_total_price = None
-            price = (work.custom_work_price if work.custom_work_price else work.service.work_price)
-            price += work.custom_material_price
-            work.total_price = price * work.quantity
-    elif field.startswith('work_total_price_'):
-        work_id = int(field.split('_')[-1])
-        work = ProjectWork.query.get(work_id)
-        if work and work.project.user_id == current_user.id:
-            work.custom_total_price = float(value)
-            work.total_price = work.custom_total_price * work.quantity
-    elif field.startswith('work_name_'):
-        work_id = int(field.split('_')[-1])
-        work = ProjectWork.query.get(work_id)
-        if work and work.project.user_id == current_user.id:
-            work.custom_name = value
-    elif field.startswith('expense_name_'):
-        expense_id = int(field.split('_')[-1])
-        expense = Expense.query.get(expense_id)
-        if expense and expense.project.user_id == current_user.id:
-            expense.name = value
-    elif field.startswith('expense_amount_'):
-        expense_id = int(field.split('_')[-1])
-        expense = Expense.query.get(expense_id)
-        if expense and expense.project.user_id == current_user.id:
-            expense.amount = float(value)
-    elif field.startswith('purchased_'):
-        purchase_id = int(field.split('_')[-1])
-        purchase = Purchase.query.get(purchase_id)
-        if purchase and purchase.project.user_id == current_user.id:
-            purchase.is_purchased = value == 'true' or value is True
-    elif field.startswith('purchase_quantity_'):
-        purchase_id = int(field.split('_')[-1])
-        purchase = Purchase.query.get(purchase_id)
-        if purchase and purchase.project.user_id == current_user.id:
-            purchase.quantity = int(value)
-    db.session.commit()
-    return jsonify({'success': True})
+                work.total_price = price * work.quantity
+        elif field.startswith('work_total_price_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work and work.project.user_id == current_user.id:
+                work.custom_total_price = float(value)
+                work.total_price = work.custom_total_price * work.quantity
+        elif field.startswith('work_name_'):
+            work_id = int(field.split('_')[-1])
+            work = ProjectWork.query.get(work_id)
+            if work and work.project.user_id == current_user.id:
+                work.custom_name = value
+        elif field.startswith('expense_name_'):
+            expense_id = int(field.split('_')[-1])
+            expense = Expense.query.get(expense_id)
+            if expense and expense.project.user_id == current_user.id:
+                expense.name = value
+        elif field.startswith('expense_amount_'):
+            expense_id = int(field.split('_')[-1])
+            expense = Expense.query.get(expense_id)
+            if expense and expense.project.user_id == current_user.id:
+                expense.amount = float(value)
+        elif field.startswith('purchased_'):
+            purchase_id = int(field.split('_')[-1])
+            purchase = Purchase.query.get(purchase_id)
+            if purchase and purchase.project.user_id == current_user.id:
+                purchase.is_purchased = value == 'true' or value is True
+        elif field.startswith('purchase_quantity_'):
+            purchase_id = int(field.split('_')[-1])
+            purchase = Purchase.query.get(purchase_id)
+            if purchase and purchase.project.user_id == current_user.id:
+                purchase.quantity = int(value)
+        
+        project.updated_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Autosave error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/project/<int:project_id>/add_work_ajax', methods=['POST'])
 @login_required
@@ -1489,12 +1580,18 @@ def add_work_ajax(project_id):
     
     data = request.get_json()
     service_id = data.get('service_id')
-    quantity = float(data.get('quantity'))
+    quantity = float(data.get('quantity', 1))
+    
+    if not service_id or quantity <= 0:
+        return jsonify({'success': False, 'message': 'Неверные данные'}), 400
+    
     service = Service.query.get_or_404(service_id)
     total_price = (service.work_price + service.material_price) * quantity
+    
     work = ProjectWork(project_id=project_id, service_id=service.id, quantity=quantity, total_price=total_price)
     db.session.add(work)
     db.session.commit()
+    
     return jsonify({'success': True, 'work_id': work.id, 'service_name': service.name, 'unit': service.unit,
                     'quantity': quantity, 'work_price': service.work_price, 'material_price': service.material_price, 
                     'total_price': total_price})
@@ -1507,9 +1604,16 @@ def add_expense_ajax(project_id):
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
     
     data = request.get_json()
-    expense = Expense(project_id=project_id, name=data.get('name'), amount=float(data.get('amount')))
+    name = data.get('name')
+    amount = float(data.get('amount', 0))
+    
+    if not name or amount < 0:
+        return jsonify({'success': False, 'message': 'Неверные данные'}), 400
+    
+    expense = Expense(project_id=project_id, name=name, amount=amount)
     db.session.add(expense)
     db.session.commit()
+    
     return jsonify({'success': True, 'expense_id': expense.id, 'name': expense.name, 'amount': expense.amount})
 
 @app.route('/project/<int:project_id>/add_purchase_ajax', methods=['POST'])
@@ -1520,9 +1624,16 @@ def add_purchase_ajax(project_id):
         return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
     
     data = request.get_json()
-    purchase = Purchase(project_id=project_id, name=data.get('name'), quantity=data.get('quantity', 1))
+    name = data.get('name')
+    quantity = int(data.get('quantity', 1))
+    
+    if not name:
+        return jsonify({'success': False, 'message': 'Неверные данные'}), 400
+    
+    purchase = Purchase(project_id=project_id, name=name, quantity=quantity)
     db.session.add(purchase)
     db.session.commit()
+    
     return jsonify({'success': True, 'purchase_id': purchase.id, 'name': purchase.name, 'quantity': purchase.quantity})
 
 @app.route('/project/<int:project_id>/get_totals')
@@ -1537,7 +1648,9 @@ def get_totals(project_id):
     total_income = sum(w.total_price for w in works)
     total_expenses = sum(e.amount for e in expenses)
     profit = total_income - total_expenses
-    return jsonify({'total_income': total_income, 'total_expenses': total_expenses, 'profit': profit})
+    progress = calculate_progress(project)
+    
+    return jsonify({'total_income': total_income, 'total_expenses': total_expenses, 'profit': profit, 'progress': progress})
 
 @app.route('/project/<int:project_id>/save_all_ajax', methods=['POST'])
 @login_required
@@ -1574,52 +1687,16 @@ def save_all_ajax(project_id):
         if 'end_date' in data and data['end_date']:
             timeline.end_date = normalize_date(data['end_date'])
         
+        project.updated_at = datetime.utcnow()
         db.session.commit()
-        progress = calculate_progress(project)
         
+        progress = calculate_progress(project)
         return jsonify({"success": True, "progress": progress, "message": "Сохранено успешно"})
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Save all ajax error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/project/<int:project_id>/update_work_ajax/<int:work_id>', methods=['POST'])
-@login_required
-def update_work_ajax(project_id, work_id):
-    try:
-        work = ProjectWork.query.get_or_404(work_id)
-        project = Project.query.get_or_404(project_id)
-        
-        if project.user_id != current_user.id:
-            return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
-        
-        data = request.json
-        
-        if 'name' in data and data['name']:
-            work.custom_name = data['name']
-        if 'quantity' in data and data['quantity'] > 0:
-            work.quantity = float(data['quantity'])
-        if 'price' in data and data['price'] > 0:
-            new_total_price = float(data['price'])
-            current_work_price = work.custom_work_price if work.custom_work_price else work.service.work_price
-            current_material_price = work.custom_material_price if work.custom_material_price else work.service.material_price
-            current_total = current_work_price + current_material_price
-            if current_total != new_total_price:
-                price_diff = new_total_price - current_total
-                work.custom_work_price = current_work_price + price_diff
-        
-        work_price = work.custom_work_price if work.custom_work_price else work.service.work_price
-        material_price = work.custom_material_price if work.custom_material_price else work.service.material_price
-        work.total_price = (work_price + material_price) * work.quantity
-        
-        db.session.commit()
-        return jsonify({"success": True, "message": "Работа обновлена"})
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500
-
-# поиск с подсказками 
 
 @app.route('/api/search-projects')
 @login_required
@@ -1642,15 +1719,113 @@ def search_projects_api():
         'client_name': p.client_name or ''
     } for p in projects])
 
+# shablons (temlates) upload
+
+@app.route('/project/<int:project_id>/upload_template', methods=['POST'])
+@login_required
+def upload_template(project_id):
+    project = Project.query.get_or_404(project_id)
+    if project.user_id != current_user.id:
+        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+    
+    template_name = request.form.get('template_name')
+    file = request.files.get('template_file')
+    apply_to_project = request.form.get('apply_to_project') == 'on'
+    
+    if not file or not template_name:
+        return jsonify({'success': False, 'message': 'Название шаблона и файл обязательны'})
+    
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': 'Недопустимый формат файла. Поддерживаются .xlsx и .csv'})
+    
+    try:
+        original_name = secure_filename(file.filename)
+        filename = f"template_{current_user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_name}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER_TEMPLATES'], filename)
+        file.save(filepath)
+        
+        template = Template(
+            user_id=current_user.id,
+            name=template_name,
+            filename=filename
+        )
+        db.session.add(template)
+        db.session.commit()
+        
+        added_count = 0
+        if apply_to_project:
+            wb = load_workbook(filepath)
+            ws = wb.active
+            
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row[0] or not row[1] or not row[2]:
+                    continue
+                
+                service_name = str(row[0]).strip()
+                unit = str(row[1]).strip()
+                price = float(row[2])
+                
+                existing_service = Service.query.filter_by(
+                    name=service_name, 
+                    unit=unit,
+                    work_price=price
+                ).first()
+                
+                if not existing_service:
+                    existing_service = Service(
+                        name=service_name,
+                        unit=unit,
+                        work_price=price,
+                        material_price=0
+                    )
+                    db.session.add(existing_service)
+                    db.session.commit()
+                
+                work = ProjectWork(
+                    project_id=project.id,
+                    service_id=existing_service.id,
+                    quantity=1,
+                    total_price=price
+                )
+                db.session.add(work)
+                added_count += 1
+            
+            db.session.commit()
+        
+        return jsonify({'success': True, 'applied': apply_to_project, 'added_count': added_count})
+        
+    except Exception as e:
+        logger.error(f"Template upload error: {e}")
+        return jsonify({'success': False, 'message': f'Ошибка: {str(e)}'})
+
+# user loader
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-print("=== APP INITIALIZED SUCCESSFULLY ===", flush=True)
+# инициализация бд
 
-with app.app_context():
-    db.create_all()
+def init_db():
+    """Инициализация базы данных с проверкой существования"""
+    with app.app_context():
+        db.create_all()
+        logger.info(f"Database initialized at {DB_PATH}")
+        
+        # Проверяем, есть ли администратор (опционально)
+        if not User.query.filter_by(email='admin@example.com').first():
+            logger.info("No admin user found, you can register first user")
+
+# запуск
 
 if __name__ == '__main__':
+    init_db()
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"Starting Karman Prorab on port {port}, debug={debug}")
+    logger.info(f"Template folder: {TEMPLATE_DIR}")
+    logger.info(f"Static folder: {STATIC_DIR}")
+    logger.info(f"Database path: {DB_PATH}")
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
